@@ -10,6 +10,7 @@ on:
 jobs:
   build-ios:
     runs-on: macos-latest
+    if: github.event_name != 'workflow_dispatch' # Only run on push, not manual trigger
 
     steps:
       - name: Checkout code
