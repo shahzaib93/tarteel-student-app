@@ -78,16 +78,15 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
 
           # Decode and save the provisioning profile
+          # With automatic signing, Xcode will find it automatically
           PP_PATH=$HOME/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
           echo "${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}" | base64 --decode > "$PP_PATH"
 
-          # Extract UUID from the provisioning profile
+          # Extract UUID and rename with UUID for Xcode to detect it properly
           PP_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(/usr/bin/security cms -D -i "$PP_PATH"))
-
-          # Rename the file with its UUID
           mv "$PP_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PP_UUID.mobileprovision"
 
-          echo "Installed provisioning profile: $PP_UUID"
+          echo "Installed provisioning profile with UUID: $PP_UUID"
         env:
           IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
 
