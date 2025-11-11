@@ -96,6 +96,13 @@ jobs:
         env:
           IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
 
+      - name: Configure Provisioning Profile in Xcode
+        run: |
+          # Update project.pbxproj with the actual provisioning profile UUID
+          sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = \"\"/PROVISIONING_PROFILE_SPECIFIER = \"$PP_UUID\"/g" ios/Runner.xcodeproj/project.pbxproj
+
+          echo "Updated Xcode project with provisioning profile UUID: $PP_UUID"
+
       - name: Build iOS with signing
         run: |
           cd ios
@@ -105,8 +112,6 @@ jobs:
             --export-options-plist=ios/ExportOptions.plist \
             --build-name=1.0.0 \
             --build-number=1
-        env:
-          PROVISIONING_PROFILE: ${{ env.PP_UUID }}
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
