@@ -95,9 +95,7 @@ jobs:
           cd ios
           pod install
           cd ..
-          flutter build ipa --release \
-            --export-options-plist=ios/ExportOptions.plist \
-            -- -allowProvisioningUpdates
+          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4

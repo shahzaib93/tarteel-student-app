@@ -14,10 +14,5 @@
 	<true/>
 	<key>signingStyle</key>
 	<string>automatic</string>
-	<key>provisioningProfiles</key>
-	<dict>
-		<key>com.tarteelequran.student</key>
-		<string>match AppStore com.tarteelequran.student</string>
-	</dict>
 </dict>
 </plist>
