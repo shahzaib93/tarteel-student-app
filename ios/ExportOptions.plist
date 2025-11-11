@@ -16,5 +16,10 @@
 	<string>manual</string>
 	<key>signingCertificate</key>
 	<string>iPhone Developer</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.tarteelequran.student</key>
+		<string>PROVISIONING_PROFILE_UUID_PLACEHOLDER</string>
+	</dict>
 </dict>
 </plist>

@@ -101,7 +101,10 @@ jobs:
           # Update project.pbxproj with the actual provisioning profile UUID
           sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = \"\"/PROVISIONING_PROFILE_SPECIFIER = \"$PP_UUID\"/g" ios/Runner.xcodeproj/project.pbxproj
 
-          echo "Updated Xcode project with provisioning profile UUID: $PP_UUID"
+          # Update ExportOptions.plist with the actual provisioning profile UUID
+          sed -i '' "s/PROVISIONING_PROFILE_UUID_PLACEHOLDER/$PP_UUID/g" ios/ExportOptions.plist
+
+          echo "Updated Xcode project and ExportOptions.plist with provisioning profile UUID: $PP_UUID"
 
       - name: Build iOS with signing
         run: |
