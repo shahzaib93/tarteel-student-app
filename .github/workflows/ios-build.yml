@@ -62,17 +62,21 @@ jobs:
         run: flutter pub get
 
       - name: Install Apple Certificate
-        if: ${{ secrets.IOS_CERTIFICATE_BASE64 != '' }}
+        if: env.IOS_CERTIFICATE_BASE64 != ''
         uses: apple-actions/import-codesign-certs@v2
         with:
           p12-file-base64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
 
       - name: Install Provisioning Profile
-        if: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 != '' }}
+        if: env.IOS_PROVISION_PROFILE_BASE64 != ''
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+        env:
+          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
 
       - name: Build iOS with signing
         run: |
@@ -89,10 +93,12 @@ jobs:
           retention-days: 30
 
       - name: Upload to TestFlight (optional)
-        if: ${{ secrets.APP_STORE_CONNECT_API_KEY != '' }}
+        if: env.APP_STORE_CONNECT_API_KEY != ''
         run: |
           xcrun altool --upload-app \
             --type ios \
             --file build/ios/ipa/*.ipa \
             --apiKey ${{ secrets.APP_STORE_CONNECT_API_KEY }} \
             --apiIssuer ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
