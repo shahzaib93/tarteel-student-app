@@ -1,0 +1,48 @@
+name: tarteel_student
+description: Tarteel Student App - Video calling platform for Quranic education
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase - Compatible versions
+  firebase_core: ^3.8.1
+  firebase_auth: ^5.3.4
+  cloud_firestore: ^5.6.0
+  # Removed firebase_messaging for now (causing web errors)
+
+  # WebRTC - Keep current version (web has issues, but mobile works fine)
+  flutter_webrtc: ^0.9.48+hotfix.1
+
+  # Socket.IO for signaling
+  socket_io_client: ^2.0.3+1
+
+  # State Management
+  provider: ^6.1.1
+
+  # UI
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+  intl: ^0.19.0
+
+  # Utilities
+  shared_preferences: ^2.3.4
+  url_launcher: ^6.3.2
+  permission_handler: ^11.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Add app icon
+  # assets:
+  #   - assets/images/
