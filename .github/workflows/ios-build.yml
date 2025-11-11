@@ -97,7 +97,7 @@ jobs:
           cd ..
           flutter build ipa --release \
             --export-options-plist=ios/ExportOptions.plist \
-            -- --allowProvisioningUpdates
+            -- -allowProvisioningUpdates
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
