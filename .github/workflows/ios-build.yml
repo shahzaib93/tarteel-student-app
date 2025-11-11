@@ -78,15 +78,21 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
 
           # Decode and save the provisioning profile
-          # With automatic signing, Xcode will find it automatically
           PP_PATH=$HOME/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
           echo "${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}" | base64 --decode > "$PP_PATH"
 
-          # Extract UUID and rename with UUID for Xcode to detect it properly
+          # Extract UUID and profile name
           PP_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(/usr/bin/security cms -D -i "$PP_PATH"))
+          PP_NAME=$(/usr/libexec/PlistBuddy -c "Print Name" /dev/stdin <<< $(/usr/bin/security cms -D -i "$PP_PATH"))
+
+          # Rename with UUID for Xcode to detect it
           mv "$PP_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PP_UUID.mobileprovision"
 
-          echo "Installed provisioning profile with UUID: $PP_UUID"
+          echo "Installed provisioning profile: $PP_NAME (UUID: $PP_UUID)"
+
+          # Export for use in build step
+          echo "PP_UUID=$PP_UUID" >> $GITHUB_ENV
+          echo "PP_NAME=$PP_NAME" >> $GITHUB_ENV
         env:
           IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
 
@@ -95,7 +101,12 @@ jobs:
           cd ios
           pod install
           cd ..
-          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+          flutter build ipa --release \
+            --export-options-plist=ios/ExportOptions.plist \
+            --build-name=1.0.0 \
+            --build-number=1
+        env:
+          PROVISIONING_PROFILE: ${{ env.PP_UUID }}
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
