@@ -16,8 +16,8 @@ dependencies:
   cloud_firestore: ^5.6.0
   # Removed firebase_messaging for now (causing web errors)
 
-  # WebRTC - Keep current version (web has issues, but mobile works fine)
-  flutter_webrtc: ^0.9.48+hotfix.1
+  # WebRTC - Updated to latest version for Android compatibility
+  flutter_webrtc: ^0.11.7
 
   # Socket.IO for signaling
   socket_io_client: ^2.0.3+1
@@ -43,6 +43,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Add app icon
-  # assets:
-  #   - assets/images/
+  # App assets
+  assets:
+    - assets/images/

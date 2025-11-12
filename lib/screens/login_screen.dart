@@ -54,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+            colors: [Color(0xFF76a6f6), Color(0xFF5a8edb)],
           ),
         ),
         child: SafeArea(
@@ -65,10 +65,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo/Title Section
-                  const Icon(
-                    Icons.school,
-                    size: 80,
-                    color: Colors.white,
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 80,
+                    width: 80,
                   ),
                   const SizedBox(height: 16),
                   const Text(

@@ -1,8 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'settings_service.dart';
 
 class WebRTCService with ChangeNotifier {
+  SettingsService? _settingsService;
+
+  /// Set settings service for video call preferences
+  void setSettingsService(SettingsService settingsService) {
+    _settingsService = settingsService;
+    debugPrint('✅ Settings service linked to WebRTC service');
+  }
   IO.Socket? socket;
   RTCPeerConnection? peerConnection;
   MediaStream? localStream;
@@ -12,20 +20,66 @@ class WebRTCService with ChangeNotifier {
   String? currentCallId;
   Map<String, dynamic>? callerInfo;
 
-  // Change this to your signaling server URL
-  final String socketUrl = 'http://localhost:3000'; // Or your deployed URL
+  // Dynamic socket URL (will be set from Firestore config)
+  String? _socketUrl;
 
-  // ICE servers (STUN/TURN)
-  final Map<String, dynamic> iceServers = {
+  // Default TURN server config
+  static const Map<String, dynamic> _defaultIceServers = {
     'iceServers': [
-      {'urls': 'stun:stun.l.google.com:19302'},
-      // Add your TURN server if you have one
-    ]
+      {
+        'urls': [
+          'turn:31.97.188.80:3478',
+          'turn:31.97.188.80:3478?transport=tcp',
+        ],
+        'username': 'coturn_user',
+        'credential': 'test123',
+      }
+    ],
+    'iceCandidatePoolSize': 10,
   };
 
+  // ICE servers (STUN/TURN) - will be configured dynamically
+  Map<String, dynamic> _iceServers = Map<String, dynamic>.from(_defaultIceServers);
+
+  /// Configure TURN server
+  void configureTurnServer(Map<String, dynamic>? turnConfig) {
+    if (turnConfig == null) {
+      debugPrint('⚠️ No TURN config provided, using defaults');
+      return;
+    }
+
+    final urls = turnConfig['urls'] as List?;
+    final username = turnConfig['username'] as String?;
+    final credential = turnConfig['credential'] as String?;
+
+    if (urls == null || urls.isEmpty) {
+      debugPrint('⚠️ TURN config missing URLs, using defaults');
+      return;
+    }
+
+    _iceServers = {
+      'iceServers': [
+        {
+          'urls': urls,
+          'username': username,
+          'credential': credential,
+        }
+      ],
+      'iceCandidatePoolSize': 10,
+    };
+
+    debugPrint('✅ TURN server configured: ${turnConfig['host'] ?? 'custom'}');
+  }
+
   /// Connect to signaling server
-  void connect(String userId, String username) {
-    socket = IO.io(socketUrl, <String, dynamic>{
+  void connect(String userId, String username, {String? socketUrl}) {
+    // Use provided socketUrl or fallback to stored one
+    final url = socketUrl ?? _socketUrl ?? 'http://192.95.33.150:5003';
+    _socketUrl = url;
+
+    debugPrint('🔌 Connecting to signaling server: $url');
+
+    socket = IO.io(url, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
     });
@@ -95,12 +149,33 @@ class WebRTCService with ChangeNotifier {
       // Initialize peer connection
       await _initializePeerConnection();
 
+      // Get video constraints from settings (HD or Standard quality)
+      final videoConstraints = _settingsService?.getVideoConstraints() ?? {
+        'facingMode': 'user',
+        'width': {'ideal': 1280},
+        'height': {'ideal': 720},
+      };
+
       // Get local media (camera + mic)
       localStream = await navigator.mediaDevices.getUserMedia({
         'audio': true,
-        'video': {
-          'facingMode': 'user',
-        },
+        'video': videoConstraints,
+      });
+
+      // Apply default microphone and camera settings
+      final micDefault = _settingsService?.microphoneDefault ?? true;
+      final cameraDefault = _settingsService?.cameraDefault ?? true;
+
+      debugPrint('🎤 Microphone default: $micDefault');
+      debugPrint('📹 Camera default: $cameraDefault');
+
+      // Set initial enabled states based on settings
+      localStream!.getAudioTracks().forEach((track) {
+        track.enabled = micDefault;
+      });
+
+      localStream!.getVideoTracks().forEach((track) {
+        track.enabled = cameraDefault;
       });
 
       // Add local stream to peer connection
@@ -182,7 +257,7 @@ class WebRTCService with ChangeNotifier {
   }
 
   Future<void> _initializePeerConnection() async {
-    peerConnection = await createPeerConnection(iceServers);
+    peerConnection = await createPeerConnection(_iceServers);
 
     // Handle ICE candidates
     peerConnection!.onIceCandidate = (candidate) {
