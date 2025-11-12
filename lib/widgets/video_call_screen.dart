@@ -42,6 +42,22 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
     if (webrtcService.localStream != null) {
       _localRenderer.srcObject = webrtcService.localStream;
+
+      // Sync initial UI state with actual track states
+      final audioTracks = webrtcService.localStream!.getAudioTracks();
+      final videoTracks = webrtcService.localStream!.getVideoTracks();
+
+      if (audioTracks.isNotEmpty) {
+        setState(() {
+          _isMuted = !audioTracks.first.enabled;
+        });
+      }
+
+      if (videoTracks.isNotEmpty) {
+        setState(() {
+          _isVideoOff = !videoTracks.first.enabled;
+        });
+      }
     }
 
     if (webrtcService.remoteStream != null) {
