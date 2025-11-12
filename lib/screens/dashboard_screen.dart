@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/webrtc_service.dart';
 import '../services/app_config_service.dart';
+import '../services/fcm_service.dart';
 import '../widgets/modern_stat_card.dart';
 import '../widgets/modern_teacher_card.dart';
 import 'messages_screen.dart';
@@ -40,8 +41,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     final webrtcService = Provider.of<WebRTCService>(context, listen: false);
     final appConfigService = Provider.of<AppConfigService>(context, listen: false);
+    final fcmService = Provider.of<FCMService>(context, listen: false);
 
     if (authService.currentUser != null) {
+      // Initialize FCM for push notifications
+      fcmService.initialize(authService.currentUser!.uid);
+
       // Get socket URL from Firestore config
       final socketUrl = appConfigService.getSocketUrl();
 
