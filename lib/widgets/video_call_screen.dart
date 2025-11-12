@@ -135,10 +135,23 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     }
   }
 
-  void _endCall() {
+  void _endCall() async {
+    if (!mounted) return;
+
     final webrtcService = Provider.of<WebRTCService>(context, listen: false);
+
+    // Remove listener first to prevent double navigation
+    webrtcService.removeListener(_updateStreams);
+
+    // End the call
     webrtcService.endCall();
-    Navigator.of(context).pop();
+
+    // Wait a bit for cleanup, then navigate
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override

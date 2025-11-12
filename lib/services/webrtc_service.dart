@@ -187,6 +187,10 @@ class WebRTCService with ChangeNotifier {
         'height': {'ideal': 720},
       };
 
+      // Enable speakerphone BEFORE getting media (iOS requirement)
+      await Helper.setSpeakerphoneOn(true);
+      debugPrint('🔊 Speakerphone enabled BEFORE getUserMedia');
+
       // Get local media (camera + mic)
       localStream = await navigator.mediaDevices.getUserMedia({
         'audio': {
@@ -196,9 +200,9 @@ class WebRTCService with ChangeNotifier {
         'video': videoConstraints,
       });
 
-      // Enable speakerphone on iOS/Android (not earpiece)
+      // Ensure speakerphone is still on after getUserMedia
       await Helper.setSpeakerphoneOn(true);
-      debugPrint('🔊 Speakerphone enabled');
+      debugPrint('🔊 Speakerphone enforced AFTER getUserMedia');
 
       // Apply default microphone and camera settings
       final micDefault = _settingsService?.microphoneDefault ?? true;
