@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera access is required for video calls with your teacher</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is required for video calls with your teacher</string>
 </dict>
 </plist>
