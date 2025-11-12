@@ -55,13 +55,22 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     if (!mounted) return;
 
     final webrtcService = Provider.of<WebRTCService>(context, listen: false);
+    bool needsUpdate = false;
 
     if (webrtcService.localStream != null && _localRenderer.srcObject == null) {
       _localRenderer.srcObject = webrtcService.localStream;
+      debugPrint('📹 Local stream attached to renderer');
+      needsUpdate = true;
     }
 
     if (webrtcService.remoteStream != null && _remoteRenderer.srcObject == null) {
       _remoteRenderer.srcObject = webrtcService.remoteStream;
+      debugPrint('🎥 Remote stream attached to renderer');
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      setState(() {});
     }
 
     if (!webrtcService.isInCall && mounted) {
@@ -217,11 +226,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                   // Speaker On/Off
                   _buildControlButton(
                     icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_off,
-                    onPressed: () {
+                    onPressed: () async {
+                      await Helper.setSpeakerphoneOn(!_isSpeakerOn);
                       setState(() {
                         _isSpeakerOn = !_isSpeakerOn;
                       });
-                      // TODO: Implement speaker toggle
                     },
                     backgroundColor: Colors.white.withOpacity(0.3),
                   ),
@@ -229,8 +238,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                   // Switch Camera
                   _buildControlButton(
                     icon: Icons.cameraswitch,
-                    onPressed: () {
-                      // TODO: Implement camera switch
+                    onPressed: () async {
+                      final webrtcService = Provider.of<WebRTCService>(context, listen: false);
+                      if (webrtcService.localStream != null) {
+                        await Helper.switchCamera(webrtcService.localStream!.getVideoTracks()[0]);
+                      }
                     },
                     backgroundColor: Colors.white.withOpacity(0.3),
                   ),

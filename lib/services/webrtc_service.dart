@@ -189,9 +189,16 @@ class WebRTCService with ChangeNotifier {
 
       // Get local media (camera + mic)
       localStream = await navigator.mediaDevices.getUserMedia({
-        'audio': true,
+        'audio': {
+          'echoCancellation': true,
+          'noiseSuppression': true,
+        },
         'video': videoConstraints,
       });
+
+      // Enable speakerphone on iOS/Android (not earpiece)
+      await Helper.setSpeakerphoneOn(true);
+      debugPrint('🔊 Speakerphone enabled');
 
       // Apply default microphone and camera settings
       final micDefault = _settingsService?.microphoneDefault ?? true;
