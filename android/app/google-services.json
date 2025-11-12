@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "51402909238",
+    "project_id": "tarteel-quran",
+    "storage_bucket": "tarteel-quran.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:51402909238:android:4c08c66c6fc98a217a9a97",
+        "android_client_info": {
+          "package_name": "com.videocall.student"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDUouenSJkXxwx0pRKYaKTVjuf7zCKLXE4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
