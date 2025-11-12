@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'dart:async';
 import '../services/webrtc_service.dart';
 
 class IncomingCallDialog extends StatefulWidget {
@@ -11,8 +12,8 @@ class IncomingCallDialog extends StatefulWidget {
 }
 
 class _IncomingCallDialogState extends State<IncomingCallDialog> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  bool _isPlaying = false;
+  Timer? _vibrationTimer;
+  bool _isRinging = false;
 
   @override
   void initState() {
@@ -21,28 +22,46 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
   }
 
   Future<void> _startRinging() async {
-    if (_isPlaying) return;
+    if (_isRinging) return;
 
     try {
-      _isPlaying = true;
-      // Play system notification sound in a loop
-      await _audioPlayer.setReleaseMode(ReleaseMode.loop);
-      await _audioPlayer.setVolume(1.0);
-      // Use asset or URL for ringtone - for now using a notification sound
-      await _audioPlayer.play(AssetSource('sounds/ringtone.mp3'));
-      debugPrint('🔔 Ringtone started');
+      _isRinging = true;
+
+      // Vibrate immediately
+      await _vibrate();
+      debugPrint('📳 Started vibrating for incoming call');
+
+      // Vibrate every 1.5 seconds
+      _vibrationTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) async {
+        await _vibrate();
+      });
+
+      debugPrint('🔔 Ringtone started (vibration pattern)');
     } catch (e) {
-      debugPrint('❌ Error playing ringtone: $e');
-      // Fallback: try to use system sound if custom sound fails
+      debugPrint('❌ Error starting ringtone: $e');
+    }
+  }
+
+  Future<void> _vibrate() async {
+    try {
+      // Vibration pattern: 200ms on, 100ms off, 200ms on, 100ms off, 200ms on
+      await HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 100));
+      await HapticFeedback.heavyImpact();
+      await Future.delayed(const Duration(milliseconds: 100));
+      await HapticFeedback.heavyImpact();
+    } catch (e) {
+      debugPrint('⚠️ Vibration not available: $e');
     }
   }
 
   Future<void> _stopRinging() async {
-    if (!_isPlaying) return;
+    if (!_isRinging) return;
 
     try {
-      await _audioPlayer.stop();
-      _isPlaying = false;
+      _vibrationTimer?.cancel();
+      _vibrationTimer = null;
+      _isRinging = false;
       debugPrint('🔕 Ringtone stopped');
     } catch (e) {
       debugPrint('❌ Error stopping ringtone: $e');
@@ -52,7 +71,6 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
   @override
   void dispose() {
     _stopRinging();
-    _audioPlayer.dispose();
     super.dispose();
   }
 

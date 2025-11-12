@@ -34,7 +34,9 @@ dependencies:
   shared_preferences: ^2.2.2
   url_launcher: ^6.2.2
   permission_handler: ^11.1.0
-  audioplayers: ^6.0.0
+
+  # Push Notifications
+  firebase_messaging: ^15.1.5
 
 dev_dependencies:
   flutter_test:
@@ -47,4 +49,3 @@ flutter:
   # App assets
   assets:
     - assets/images/
-    - assets/sounds/
