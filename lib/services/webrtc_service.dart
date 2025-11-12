@@ -20,6 +20,9 @@ class WebRTCService with ChangeNotifier {
   String? currentCallId;
   Map<String, dynamic>? callerInfo;
 
+  // Queue for ICE candidates received before peer connection is ready
+  final List<RTCIceCandidate> _pendingIceCandidates = [];
+
   // Dynamic socket URL (will be set from Firestore config)
   String? _socketUrl;
 
@@ -119,13 +122,41 @@ class WebRTCService with ChangeNotifier {
     // ICE candidate received
     socket!.on('webrtc-ice-candidate', (data) async {
       debugPrint('🧊 ICE candidate received');
-      await peerConnection!.addCandidate(
-        RTCIceCandidate(
-          data['candidate']['candidate'],
-          data['candidate']['sdpMid'],
-          data['candidate']['sdpMLineIndex'],
-        ),
-      );
+
+      try {
+        // Extract candidate data safely
+        final candidateData = data['candidate'];
+        final candidateStr = candidateData['candidate']?.toString();
+        final sdpMid = candidateData['sdpMid']?.toString();
+        final sdpMLineIndex = candidateData['sdpMLineIndex'] as int?;
+
+        if (candidateStr == null) {
+          debugPrint('⚠️ Invalid ICE candidate data: candidate string is null');
+          return;
+        }
+
+        final candidate = RTCIceCandidate(
+          candidateStr,
+          sdpMid,
+          sdpMLineIndex,
+        );
+
+        // If peer connection exists, add candidate immediately
+        if (peerConnection != null) {
+          try {
+            await peerConnection!.addCandidate(candidate);
+            debugPrint('✅ ICE candidate added');
+          } catch (e) {
+            debugPrint('⚠️ Error adding ICE candidate: $e');
+          }
+        } else {
+          // Otherwise, queue it for later
+          debugPrint('📦 Queuing ICE candidate (peer connection not ready)');
+          _pendingIceCandidates.add(candidate);
+        }
+      } catch (e) {
+        debugPrint('❌ Error processing ICE candidate: $e');
+      }
     });
 
     // Call ended
@@ -204,6 +235,21 @@ class WebRTCService with ChangeNotifier {
         'recipientId': callerInfo!['callerId'],
       });
 
+      // Process any pending ICE candidates that arrived before peer connection was ready
+      if (_pendingIceCandidates.isNotEmpty) {
+        debugPrint('📤 Processing ${_pendingIceCandidates.length} pending ICE candidates');
+        for (final candidate in _pendingIceCandidates) {
+          try {
+            await peerConnection!.addCandidate(candidate);
+            debugPrint('✅ Pending ICE candidate added');
+          } catch (e) {
+            debugPrint('⚠️ Error adding pending ICE candidate: $e');
+          }
+        }
+        _pendingIceCandidates.clear();
+        debugPrint('🧹 Cleared pending ICE candidates queue');
+      }
+
       isInCall = true;
       currentCallId = callerInfo!['callId'];
       notifyListeners();
@@ -248,6 +294,12 @@ class WebRTCService with ChangeNotifier {
     remoteStream?.getTracks().forEach((track) => track.stop());
     remoteStream?.dispose();
     remoteStream = null;
+
+    // Clear any pending ICE candidates
+    if (_pendingIceCandidates.isNotEmpty) {
+      debugPrint('🧹 Clearing ${_pendingIceCandidates.length} pending ICE candidates on call end');
+      _pendingIceCandidates.clear();
+    }
 
     isInCall = false;
     currentCallId = null;

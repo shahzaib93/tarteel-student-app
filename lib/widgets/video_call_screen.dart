@@ -18,10 +18,20 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   bool _isVideoOff = false;
   bool _isSpeakerOn = true;
 
+  // Store reference to avoid accessing context during dispose
+  WebRTCService? _webrtcService;
+
   @override
   void initState() {
     super.initState();
     _initRenderers();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Save reference to WebRTCService for safe disposal
+    _webrtcService = Provider.of<WebRTCService>(context, listen: false);
   }
 
   Future<void> _initRenderers() async {
@@ -42,6 +52,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   void _updateStreams() {
+    if (!mounted) return;
+
     final webrtcService = Provider.of<WebRTCService>(context, listen: false);
 
     if (webrtcService.localStream != null && _localRenderer.srcObject == null) {
@@ -52,15 +64,15 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       _remoteRenderer.srcObject = webrtcService.remoteStream;
     }
 
-    if (!webrtcService.isInCall) {
+    if (!webrtcService.isInCall && mounted) {
       Navigator.of(context).pop();
     }
   }
 
   @override
   void dispose() {
-    final webrtcService = Provider.of<WebRTCService>(context, listen: false);
-    webrtcService.removeListener(_updateStreams);
+    // Use saved reference instead of accessing context
+    _webrtcService?.removeListener(_updateStreams);
     _localRenderer.dispose();
     _remoteRenderer.dispose();
     super.dispose();
