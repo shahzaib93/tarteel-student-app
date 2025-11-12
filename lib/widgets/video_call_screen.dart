@@ -94,10 +94,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           .getAudioTracks()
           .firstOrNull;
       if (audioTrack != null) {
-        audioTrack.enabled = _isMuted;
         setState(() {
           _isMuted = !_isMuted;
+          audioTrack.enabled = !_isMuted; // enabled when NOT muted
         });
+        debugPrint('🎤 Microphone ${_isMuted ? 'muted' : 'unmuted'}');
       }
     }
   }
@@ -109,10 +110,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           .getVideoTracks()
           .firstOrNull;
       if (videoTrack != null) {
-        videoTrack.enabled = _isVideoOff;
         setState(() {
           _isVideoOff = !_isVideoOff;
+          videoTrack.enabled = !_isVideoOff; // enabled when NOT off
         });
+        debugPrint('📹 Camera ${_isVideoOff ? 'off' : 'on'}');
       }
     }
   }
