@@ -94,10 +94,6 @@ class TarteelStudentApp extends StatelessWidget {
             elevation: 0,
             centerTitle: false,
           ),
-          cardTheme: const CardThemeData(
-            elevation: 2,
-            color: Colors.white,
-          ),
           fontFamily: 'Inter',
         ),
         home: const AuthWrapper(),
