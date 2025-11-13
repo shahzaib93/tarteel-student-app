@@ -22,6 +22,8 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  bool _isShowingDialog = false;
+  bool _isNavigatingToCall = false;
 
   // Create screens once, not on every build
   late final List<Widget> _screens = [
@@ -68,30 +70,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _handleWebRTCChanges() {
+    if (!mounted) return;
+
     final webrtcService = Provider.of<WebRTCService>(context, listen: false);
 
-    // Show incoming call dialog
-    if (webrtcService.callerInfo != null && !webrtcService.isInCall) {
+    // Show incoming call dialog (only once)
+    if (webrtcService.callerInfo != null && !webrtcService.isInCall && !_isShowingDialog) {
       _showIncomingCallDialog();
     }
 
-    // Show video call screen
-    if (webrtcService.isInCall) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => const VideoCallScreen(),
-          fullscreenDialog: true,
-        ),
-      );
+    // Navigate to video call screen (only once)
+    if (webrtcService.isInCall && !_isNavigatingToCall) {
+      _navigateToCallScreen();
+    }
+
+    // Reset flags when call ends
+    if (!webrtcService.isInCall && webrtcService.callerInfo == null) {
+      _isShowingDialog = false;
+      _isNavigatingToCall = false;
     }
   }
 
   void _showIncomingCallDialog() {
+    _isShowingDialog = true;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => const IncomingCallDialog(),
-    );
+    ).then((_) {
+      // Reset flag when dialog closes
+      if (mounted) {
+        setState(() {
+          _isShowingDialog = false;
+        });
+      }
+    });
+  }
+
+  void _navigateToCallScreen() {
+    _isNavigatingToCall = true;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const VideoCallScreen(),
+        fullscreenDialog: true,
+      ),
+    ).then((_) {
+      // Reset flag when returning from call screen
+      if (mounted) {
+        setState(() {
+          _isNavigatingToCall = false;
+        });
+      }
+    });
   }
 
   @override
