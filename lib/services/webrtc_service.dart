@@ -182,34 +182,54 @@ class WebRTCService with ChangeNotifier {
 
   /// Answer incoming call
   Future<void> answerCall() async {
-    if (callerInfo == null) return;
+    if (callerInfo == null) {
+      debugPrint('⚠️ answerCall() called but callerInfo is null');
+      return;
+    }
+
+    debugPrint('📞 ========== STARTING answerCall() ==========');
 
     try {
-      debugPrint('📞 Starting answerCall()...');
-
       // Check current permission status first
       final cameraStatusCheck = await Permission.camera.status;
       final micStatusCheck = await Permission.microphone.status;
-      debugPrint('🔍 Current permissions - Camera: $cameraStatusCheck, Mic: $micStatusCheck');
+      debugPrint('🔍 BEFORE REQUEST - Camera: $cameraStatusCheck, Mic: $micStatusCheck');
+      debugPrint('   Camera isPermanentlyDenied: ${cameraStatusCheck.isPermanentlyDenied}');
+      debugPrint('   Mic isPermanentlyDenied: ${micStatusCheck.isPermanentlyDenied}');
+
+      // If permanently denied, open settings
+      if (cameraStatusCheck.isPermanentlyDenied || micStatusCheck.isPermanentlyDenied) {
+        debugPrint('❌ Permissions are PERMANENTLY DENIED - need to open settings');
+        throw Exception('Permissions permanently denied. Please go to Settings > App > Permissions and enable Camera and Microphone.');
+      }
 
       // Request camera and microphone permissions
-      debugPrint('🔐 Requesting camera and microphone permissions...');
+      debugPrint('🔐 REQUESTING permissions now...');
       final cameraStatus = await Permission.camera.request();
+      debugPrint('📸 Camera permission result: $cameraStatus');
+
       final micStatus = await Permission.microphone.request();
+      debugPrint('🎤 Microphone permission result: $micStatus');
 
-      debugPrint('📋 Permission results - Camera: $cameraStatus, Mic: $micStatus');
-
+      // Check if denied
       if (cameraStatus.isDenied || micStatus.isDenied) {
-        debugPrint('❌ Permissions denied: camera=$cameraStatus, mic=$micStatus');
-        throw Exception('Camera or microphone permission denied');
+        debugPrint('❌ Permissions DENIED by user: camera=$cameraStatus, mic=$micStatus');
+        throw Exception('Camera or microphone permission was denied. Please accept permissions to make video calls.');
       }
 
+      // Check if permanently denied AFTER request
       if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
-        debugPrint('❌ Permissions permanently denied');
-        throw Exception('Camera or microphone permission permanently denied. Please enable in settings.');
+        debugPrint('❌ Permissions PERMANENTLY DENIED after request');
+        throw Exception('Permissions permanently denied. Please enable in device Settings.');
       }
 
-      debugPrint('✅ Permissions granted: camera=$cameraStatus, mic=$micStatus');
+      // Check if granted
+      if (!cameraStatus.isGranted || !micStatus.isGranted) {
+        debugPrint('❌ Permissions NOT GRANTED: camera=$cameraStatus, mic=$micStatus');
+        throw Exception('Camera or microphone permission not granted. Status: Camera=$cameraStatus, Mic=$micStatus');
+      }
+
+      debugPrint('✅ Permissions GRANTED: camera=$cameraStatus, mic=$micStatus');
 
       // Initialize peer connection
       await _initializePeerConnection();
@@ -297,12 +317,16 @@ class WebRTCService with ChangeNotifier {
 
       isInCall = true;
       currentCallId = callerInfo!['callId'];
-      notifyListeners();
 
-      debugPrint('✅ Call answered successfully');
+      debugPrint('🔔 Calling notifyListeners() - isInCall=$isInCall');
+      notifyListeners();
+      debugPrint('🔔 notifyListeners() completed');
+
+      debugPrint('✅ ========== answerCall() COMPLETED SUCCESSFULLY ==========');
     } catch (e, stackTrace) {
-      debugPrint('❌ Error answering call: $e');
-      debugPrint('Stack trace: $stackTrace');
+      debugPrint('❌ ========== ERROR in answerCall() ==========');
+      debugPrint('❌ Error: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
       endCall();
       rethrow; // Rethrow to show error in UI
     }
