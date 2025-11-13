@@ -21,14 +21,48 @@ jobs:
           channel: 'stable'
           cache: true
 
+      # Cache pub dependencies
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Install CocoaPods dependencies (with cache)
+      # Cache CocoaPods dependencies
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Install CocoaPods dependencies
         run: |
           cd ios
-          pod install --repo-update
+          pod install
           cd ..
+
+      # Cache Xcode derived data for faster builds
+      - name: Cache Xcode DerivedData
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+            build
+          key: ${{ runner.os }}-xcode-${{ hashFiles('ios/**/*.pbxproj', 'ios/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-
 
       - name: Install Apple Certificate
         if: env.IOS_CERTIFICATE_BASE64 != ''
