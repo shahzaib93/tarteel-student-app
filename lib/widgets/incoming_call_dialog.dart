@@ -134,8 +134,14 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                   Column(
                     children: [
                       FloatingActionButton(
-                        onPressed: () {
+                        onPressed: () async {
+                          // Reject call first
                           webrtcService.rejectCall();
+
+                          // Small delay to let rejection complete
+                          await Future.delayed(const Duration(milliseconds: 100));
+
+                          // Then close dialog
                           if (context.mounted) {
                             Navigator.of(context).pop();
                           }
