@@ -1,88 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'dart:async';
 import '../services/webrtc_service.dart';
 
-class IncomingCallDialog extends StatefulWidget {
+class IncomingCallDialog extends StatelessWidget {
   const IncomingCallDialog({super.key});
-
-  @override
-  State<IncomingCallDialog> createState() => _IncomingCallDialogState();
-}
-
-class _IncomingCallDialogState extends State<IncomingCallDialog> {
-  Timer? _vibrationTimer;
-  bool _isRinging = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _startRinging();
-  }
-
-  Future<void> _startRinging() async {
-    if (_isRinging) return;
-
-    try {
-      _isRinging = true;
-
-      // Vibrate immediately
-      await _vibrate();
-      debugPrint('📳 Started vibrating for incoming call');
-
-      // Vibrate every 1.5 seconds
-      _vibrationTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) async {
-        await _vibrate();
-      });
-
-      debugPrint('🔔 Ringtone started (vibration pattern)');
-    } catch (e) {
-      debugPrint('❌ Error starting ringtone: $e');
-    }
-  }
-
-  Future<void> _vibrate() async {
-    try {
-      // Vibration pattern: 200ms on, 100ms off, 200ms on, 100ms off, 200ms on
-      await HapticFeedback.heavyImpact();
-      await Future.delayed(const Duration(milliseconds: 100));
-      await HapticFeedback.heavyImpact();
-      await Future.delayed(const Duration(milliseconds: 100));
-      await HapticFeedback.heavyImpact();
-    } catch (e) {
-      debugPrint('⚠️ Vibration not available: $e');
-    }
-  }
-
-  Future<void> _stopRinging() async {
-    if (!_isRinging) return;
-
-    try {
-      _vibrationTimer?.cancel();
-      _vibrationTimer = null;
-      _isRinging = false;
-      debugPrint('🔕 Ringtone stopped');
-    } catch (e) {
-      debugPrint('❌ Error stopping ringtone: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _stopRinging();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final webrtcService = Provider.of<WebRTCService>(context);
     final callerInfo = webrtcService.callerInfo;
 
-    // If caller info is null, stop ringing and dismiss dialog
+    // If caller info is null, schedule dialog dismissal after build completes
     if (callerInfo == null) {
-      _stopRinging();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) {
           Navigator.of(context).pop();
@@ -146,7 +75,6 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                   children: [
                     FloatingActionButton(
                       onPressed: () {
-                        _stopRinging();
                         webrtcService.rejectCall();
                         Navigator.of(context).pop();
                       },
@@ -166,7 +94,6 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                   children: [
                     FloatingActionButton(
                       onPressed: () async {
-                        _stopRinging();
                         Navigator.of(context).pop();
                         await webrtcService.answerCall();
                       },
