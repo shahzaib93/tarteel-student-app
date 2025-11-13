@@ -15,6 +15,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
   bool _isAnswering = false;
   String _statusMessage = '';
   bool _hasNavigated = false; // Prevent double navigation
+  Map<String, dynamic>? _savedCallerInfo; // Save caller info in case it becomes null during answering
 
   @override
   void initState() {
@@ -40,8 +41,14 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
       builder: (context, webrtcService, child) {
         final callerInfo = webrtcService.callerInfo;
 
-        // If caller info is null and we're not answering, dismiss dialog
-        if (callerInfo == null && !_isAnswering) {
+        // Save caller info the first time we see it
+        if (callerInfo != null && _savedCallerInfo == null) {
+          _savedCallerInfo = callerInfo;
+        }
+
+        // Only auto-dismiss if caller hung up AND we're not in the middle of answering
+        // This prevents dismissal during permission prompts
+        if (callerInfo == null && !_isAnswering && !_hasNavigated) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
               Navigator.of(context).pop();
@@ -50,7 +57,10 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
           return const SizedBox.shrink();
         }
 
-        return _buildDialog(context, webrtcService, callerInfo);
+        // Use saved caller info if current one is null (happens during permission requests)
+        final displayCallerInfo = callerInfo ?? _savedCallerInfo;
+
+        return _buildDialog(context, webrtcService, displayCallerInfo);
       },
     );
   }
