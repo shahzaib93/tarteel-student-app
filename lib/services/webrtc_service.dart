@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
@@ -107,9 +108,19 @@ class WebRTCService with ChangeNotifier {
   void _setupSignalingListeners() {
     // Incoming call
     socket!.on('webrtc-offer', (data) async {
-      debugPrint('📞 Incoming call from ${data['callerName']}');
-      callerInfo = data;
-      notifyListeners();
+      try {
+        debugPrint('📞 Incoming call from ${data['callerName']}');
+        debugPrint('📦 Call data: $data');
+
+        callerInfo = data;
+
+        // Schedule notification for next event loop to avoid calling during build
+        scheduleMicrotask(() {
+          notifyListeners();
+        });
+      } catch (e) {
+        debugPrint('❌ Error handling incoming call: $e');
+      }
     });
 
     // Answer received
@@ -291,9 +302,11 @@ class WebRTCService with ChangeNotifier {
       isInCall = true;
       currentCallId = callerInfo!['callId'];
       notifyListeners();
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('❌ Error answering call: $e');
+      debugPrint('Stack trace: $stackTrace');
       endCall();
+      rethrow; // Rethrow to show error in UI
     }
   }
 
