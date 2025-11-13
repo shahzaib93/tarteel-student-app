@@ -121,6 +121,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       debugPrint('📞 Dashboard: Calling answerCall()...');
       await webrtcService.answerCall();
       debugPrint('📞 Dashboard: answerCall() completed, isInCall=${webrtcService.isInCall}');
+      debugPrint('📞 Dashboard: localStream exists: ${webrtcService.localStream != null}');
+      debugPrint('📞 Dashboard: remoteStream exists: ${webrtcService.remoteStream != null}');
 
       // Safety check after async operation
       if (!mounted) {
@@ -141,8 +143,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return;
       }
 
+      // IMPORTANT: Check if localStream is ready
+      if (webrtcService.localStream == null) {
+        debugPrint('❌ Dashboard: Local stream not ready after answerCall()');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to initialize camera/microphone'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
       // Navigate to call screen
-      debugPrint('📞 Dashboard: Navigating to VideoCallScreen...');
+      debugPrint('📞 Dashboard: All checks passed, navigating to VideoCallScreen...');
       _navigateToCallScreen();
       debugPrint('✅ Dashboard: Call acceptance flow completed successfully');
     } catch (e, stackTrace) {
