@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:permission_handler/permission_handler.dart';
 import 'settings_service.dart';
 
 class WebRTCService with ChangeNotifier {
@@ -177,6 +178,23 @@ class WebRTCService with ChangeNotifier {
     if (callerInfo == null) return;
 
     try {
+      // Request camera and microphone permissions
+      debugPrint('🔐 Requesting camera and microphone permissions...');
+      final cameraStatus = await Permission.camera.request();
+      final micStatus = await Permission.microphone.request();
+
+      if (cameraStatus.isDenied || micStatus.isDenied) {
+        debugPrint('❌ Permissions denied: camera=$cameraStatus, mic=$micStatus');
+        throw Exception('Camera or microphone permission denied');
+      }
+
+      if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
+        debugPrint('❌ Permissions permanently denied');
+        throw Exception('Camera or microphone permission permanently denied. Please enable in settings.');
+      }
+
+      debugPrint('✅ Permissions granted: camera=$cameraStatus, mic=$micStatus');
+
       // Initialize peer connection
       await _initializePeerConnection();
 
