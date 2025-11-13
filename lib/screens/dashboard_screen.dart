@@ -71,7 +71,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _handleWebRTCChanges() {
-    // DO NOTHING - let the dialog handle everything
+    if (!mounted) return;
+
+    final webrtcService = Provider.of<WebRTCService>(context, listen: false);
+
+    // Show incoming call dialog when call arrives (ONLY ONCE)
+    if (webrtcService.callerInfo != null && !webrtcService.isInCall && !_isShowingDialog) {
+      _showIncomingCallDialog();
+    }
   }
 
   void _showIncomingCallDialog() {

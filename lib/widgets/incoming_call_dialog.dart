@@ -13,6 +13,7 @@ class IncomingCallDialog extends StatefulWidget {
 class _IncomingCallDialogState extends State<IncomingCallDialog> {
   bool _isAnswering = false;
   String _statusMessage = '';
+  bool _hasNavigated = false; // Prevent double navigation
 
   @override
   Widget build(BuildContext context) {
@@ -20,8 +21,9 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
       builder: (context, webrtcService, child) {
         final callerInfo = webrtcService.callerInfo;
 
-        // If call is accepted and in progress, navigate to call screen
-        if (webrtcService.isInCall && _isAnswering) {
+        // If call is accepted and in progress, navigate to call screen (ONLY ONCE)
+        if (webrtcService.isInCall && _isAnswering && !_hasNavigated) {
+          _hasNavigated = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
               Navigator.of(context).pop(); // Close dialog
@@ -163,11 +165,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                             await webrtcService.answerCall();
 
                             setState(() => _statusMessage = 'Call connected!');
-                            await Future.delayed(const Duration(milliseconds: 500));
-
-                            if (context.mounted) {
-                              Navigator.of(context).pop();
-                            }
+                            // Navigation will happen automatically via Consumer when isInCall=true
                           } catch (e) {
                             if (mounted) {
                               setState(() {
