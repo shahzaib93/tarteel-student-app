@@ -144,17 +144,9 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                   Column(
                     children: [
                       FloatingActionButton(
-                        onPressed: () async {
-                          // Reject call first
+                        onPressed: () {
+                          // Just reject - dialog will auto-dismiss when callerInfo becomes null
                           webrtcService.rejectCall();
-
-                          // Small delay to let rejection complete
-                          await Future.delayed(const Duration(milliseconds: 100));
-
-                          // Then close dialog
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                          }
                         },
                         backgroundColor: Colors.red,
                         child: const Icon(Icons.call_end, color: Colors.white),
