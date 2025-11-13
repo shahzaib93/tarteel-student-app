@@ -304,7 +304,12 @@ class WebRTCService with ChangeNotifier {
 
       isInCall = true;
       currentCallId = callerInfo!['callId'];
+
+      // Delay notifyListeners to avoid calling during button press handler
+      await Future.delayed(const Duration(milliseconds: 100));
       notifyListeners();
+
+      debugPrint('✅ Call answered successfully');
     } catch (e, stackTrace) {
       debugPrint('❌ Error answering call: $e');
       debugPrint('Stack trace: $stackTrace');
