@@ -168,16 +168,28 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                           });
 
                           try {
-                            setState(() => _statusMessage = 'Checking permissions...');
+                            setState(() => _statusMessage = 'Starting call...');
                             await Future.delayed(const Duration(milliseconds: 100));
 
+                            debugPrint('🔵 About to call answerCall()');
                             await webrtcService.answerCall();
+                            debugPrint('🟢 answerCall() returned, isInCall=${webrtcService.isInCall}');
 
-                            debugPrint('✅ answerCall() completed, isInCall=${webrtcService.isInCall}');
-                            setState(() => _statusMessage = 'Call connected!');
+                            if (!webrtcService.isInCall) {
+                              setState(() => _statusMessage = 'ERROR: isInCall is FALSE after answerCall!');
+                              await Future.delayed(const Duration(seconds: 2));
+                              if (mounted) {
+                                Navigator.of(context).pop();
+                              }
+                              return;
+                            }
+
+                            setState(() => _statusMessage = 'Navigating to call...');
+                            await Future.delayed(const Duration(milliseconds: 300));
 
                             // Navigate directly to call screen
-                            if (mounted && webrtcService.isInCall) {
+                            if (mounted) {
+                              debugPrint('🚀 Navigating to VideoCallScreen');
                               Navigator.of(context).pop(); // Close dialog
                               Navigator.of(context).push(
                                 MaterialPageRoute(
