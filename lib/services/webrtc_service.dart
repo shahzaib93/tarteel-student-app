@@ -114,9 +114,12 @@ class WebRTCService with ChangeNotifier {
 
         callerInfo = data;
 
-        // Schedule notification for next event loop to avoid calling during build
+        // Add a small delay AND use scheduleMicrotask to ensure we're not in build phase
+        await Future.delayed(const Duration(milliseconds: 100));
         scheduleMicrotask(() {
-          notifyListeners();
+          if (callerInfo != null) { // Double check it's still valid
+            notifyListeners();
+          }
         });
       } catch (e) {
         debugPrint('❌ Error handling incoming call: $e');
