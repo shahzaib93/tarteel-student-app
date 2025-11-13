@@ -22,8 +22,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
-  bool _isShowingIncomingCall = false; // Prevent duplicate dialogs
-  bool _isShowingVideoCall = false; // Prevent duplicate navigation
 
   // Create screens once, not on every build
   late final List<Widget> _screens = [
@@ -70,45 +68,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _handleWebRTCChanges() {
-    if (!mounted) return;
+    final webrtcService = Provider.of<WebRTCService>(context, listen: false);
 
-    // Schedule for after the current frame to avoid "during build" errors
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+    // Show incoming call dialog
+    if (webrtcService.callerInfo != null && !webrtcService.isInCall) {
+      _showIncomingCallDialog();
+    }
 
-      final webrtcService = Provider.of<WebRTCService>(context, listen: false);
-
-      // Show incoming call dialog (only if not already showing)
-      if (webrtcService.callerInfo != null && !webrtcService.isInCall && !_isShowingIncomingCall) {
-        _showIncomingCallDialog();
-      }
-
-      // Show video call screen (only if not already showing)
-      if (webrtcService.isInCall && !_isShowingVideoCall) {
-        _isShowingVideoCall = true;
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const VideoCallScreen(),
-            fullscreenDialog: true,
-          ),
-        ).then((_) {
-          // Reset flag when returning from video call
-          _isShowingVideoCall = false;
-        });
-      }
-    });
+    // Show video call screen
+    if (webrtcService.isInCall) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const VideoCallScreen(),
+          fullscreenDialog: true,
+        ),
+      );
+    }
   }
 
   void _showIncomingCallDialog() {
-    _isShowingIncomingCall = true;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => const IncomingCallDialog(),
-    ).then((_) {
-      // Reset flag when dialog dismissed
-      _isShowingIncomingCall = false;
-    });
+    );
   }
 
   @override

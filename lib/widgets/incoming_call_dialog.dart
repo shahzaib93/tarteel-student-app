@@ -168,39 +168,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                       onPressed: () async {
                         _stopRinging();
                         Navigator.of(context).pop();
-
-                        try {
-                          await webrtcService.answerCall();
-                        } catch (e) {
-                          debugPrint('❌ Error in incoming call dialog: $e');
-
-                          // Show error message if permissions denied or other error
-                          if (context.mounted) {
-                            final isPermissionError = e.toString().contains('permission');
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  isPermissionError
-                                      ? 'Camera or microphone permission denied. Tap "Settings" to enable.'
-                                      : 'Failed to answer call: ${e.toString()}',
-                                ),
-                                backgroundColor: Colors.red,
-                                duration: const Duration(seconds: 10),
-                                action: SnackBarAction(
-                                  label: isPermissionError ? 'Settings' : 'OK',
-                                  textColor: Colors.white,
-                                  onPressed: () async {
-                                    if (isPermissionError) {
-                                      // Open app settings
-                                      await openAppSettings();
-                                    }
-                                  },
-                                ),
-                              ),
-                            );
-                          }
-                        }
+                        await webrtcService.answerCall();
                       },
                       backgroundColor: Colors.green,
                       child: const Icon(Icons.videocam, color: Colors.white),
