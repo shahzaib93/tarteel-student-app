@@ -103,29 +103,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// Permissions, answering call, navigation - everything happens here
   Future<void> _handleAcceptCall() async {
     if (_isNavigatingToCall) return; // Prevent double-tap
+    if (!mounted) return; // Safety check
 
-    final webrtcService = Provider.of<WebRTCService>(context, listen: false);
+    debugPrint('📞 Dashboard: Starting call acceptance flow...');
+
+    // Get WebRTCService reference BEFORE any async operations
+    WebRTCService? webrtcService;
+    try {
+      webrtcService = Provider.of<WebRTCService>(context, listen: false);
+    } catch (e) {
+      debugPrint('❌ Dashboard: Failed to get WebRTCService: $e');
+      return;
+    }
 
     try {
-      debugPrint('📞 Dashboard: Starting call acceptance flow...');
-
       // Answer the call (this handles permissions internally)
       debugPrint('📞 Dashboard: Calling answerCall()...');
       await webrtcService.answerCall();
       debugPrint('📞 Dashboard: answerCall() completed, isInCall=${webrtcService.isInCall}');
 
+      // Safety check after async operation
+      if (!mounted) {
+        debugPrint('⚠️ Dashboard: Widget unmounted after answerCall()');
+        return;
+      }
+
       // Check if call was actually established
       if (!webrtcService.isInCall) {
         debugPrint('❌ Dashboard: Call not established after answerCall()');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to connect call'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to connect call'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
         return;
       }
 
@@ -133,8 +145,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       debugPrint('📞 Dashboard: Navigating to VideoCallScreen...');
       _navigateToCallScreen();
       debugPrint('✅ Dashboard: Call acceptance flow completed successfully');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('❌ Dashboard: Error in call acceptance: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

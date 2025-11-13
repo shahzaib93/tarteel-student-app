@@ -85,9 +85,11 @@ class IncomingCallDialog extends StatelessWidget {
                     Column(
                       children: [
                         FloatingActionButton(
-                          onPressed: () {
+                          onPressed: () async {
                             // Close dialog first, THEN reject
                             Navigator.of(context).pop();
+                            // Wait a tiny moment for dialog to fully close
+                            await Future.delayed(const Duration(milliseconds: 100));
                             if (onReject != null) {
                               onReject!();
                             } else {
@@ -109,9 +111,11 @@ class IncomingCallDialog extends StatelessWidget {
                     Column(
                       children: [
                         FloatingActionButton(
-                          onPressed: () {
+                          onPressed: () async {
                             // Close dialog first, THEN accept (parent handles everything)
                             Navigator.of(context).pop();
+                            // Wait a tiny moment for dialog to fully close
+                            await Future.delayed(const Duration(milliseconds: 100));
                             if (onAccept != null) {
                               onAccept!();
                             }
