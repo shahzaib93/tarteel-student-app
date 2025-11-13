@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/webrtc_service.dart';
@@ -79,79 +79,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   /// Request camera and microphone permissions early (on app startup)
-  /// This is similar to how we initialize FCM early
+  /// Uses flutter_webrtc's getUserMedia which triggers native iOS permission prompts
   Future<void> _requestMediaPermissionsEarly() async {
     try {
       debugPrint('🎥 ========== REQUESTING CAMERA/MIC PERMISSIONS ==========');
+      debugPrint('🎥 Using getUserMedia() to trigger native iOS permission prompts...');
 
-      // Check current status first
-      final cameraStatusBefore = await Permission.camera.status;
-      final micStatusBefore = await Permission.microphone.status;
-      debugPrint('📸 Camera status BEFORE request: $cameraStatusBefore');
-      debugPrint('🎤 Mic status BEFORE request: $micStatusBefore');
+      // Get temporary stream to trigger permission prompts
+      // This is the CORRECT way on iOS - getUserMedia automatically shows permission dialogs
+      final stream = await navigator.mediaDevices.getUserMedia({
+        'audio': true,
+        'video': {
+          'facingMode': 'user',
+        },
+      });
 
-      // Request camera permission
-      debugPrint('📸 Requesting camera permission...');
-      final cameraStatus = await Permission.camera.request();
-      debugPrint('📸 Camera permission result: $cameraStatus');
-      debugPrint('   isGranted: ${cameraStatus.isGranted}');
-      debugPrint('   isDenied: ${cameraStatus.isDenied}');
-      debugPrint('   isPermanentlyDenied: ${cameraStatus.isPermanentlyDenied}');
-      debugPrint('   isRestricted: ${cameraStatus.isRestricted}');
-      debugPrint('   isLimited: ${cameraStatus.isLimited}');
+      debugPrint('✅ ========== PERMISSIONS GRANTED! ==========');
+      debugPrint('📸 Camera tracks: ${stream.getVideoTracks().length}');
+      debugPrint('🎤 Audio tracks: ${stream.getAudioTracks().length}');
 
-      // Request microphone permission
-      debugPrint('🎤 Requesting microphone permission...');
-      final micStatus = await Permission.microphone.request();
-      debugPrint('🎤 Microphone permission result: $micStatus');
-      debugPrint('   isGranted: ${micStatus.isGranted}');
-      debugPrint('   isDenied: ${micStatus.isDenied}');
-      debugPrint('   isPermanentlyDenied: ${micStatus.isPermanentlyDenied}');
-      debugPrint('   isRestricted: ${micStatus.isRestricted}');
-      debugPrint('   isLimited: ${micStatus.isLimited}');
+      // Stop and dispose the temporary stream immediately
+      stream.getTracks().forEach((track) {
+        track.stop();
+        debugPrint('🛑 Stopped track: ${track.kind}');
+      });
+      stream.dispose();
+      debugPrint('🗑️ Disposed temporary stream');
 
-      if (cameraStatus.isGranted && micStatus.isGranted) {
-        debugPrint('✅ ========== PERMISSIONS GRANTED! ==========');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Camera and Microphone access granted!'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-      } else if (cameraStatus.isDenied || micStatus.isDenied) {
-        debugPrint('⚠️ ========== PERMISSIONS DENIED ==========');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('⚠️ Camera/Microphone denied. You can grant later when a call arrives.'),
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      } else if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
-        debugPrint('❌ ========== PERMISSIONS PERMANENTLY DENIED ==========');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Camera/Microphone access denied. Enable in Settings to make video calls.'),
-              action: SnackBarAction(
-                label: 'Open Settings',
-                onPressed: () => openAppSettings(),
-              ),
-              duration: const Duration(seconds: 10),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Camera and Microphone access granted!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
+
+      debugPrint('✅ Permissions requested successfully and stream cleaned up');
     } catch (e, stackTrace) {
-      debugPrint('❌ ========== ERROR REQUESTING PERMISSIONS ==========');
+      debugPrint('❌ ========== PERMISSIONS DENIED OR ERROR ==========');
       debugPrint('❌ Error: $e');
       debugPrint('❌ Stack trace: $stackTrace');
-      // Non-critical error - user can still try when call arrives
+
+      // User denied permissions - this is OK, they can grant later
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Camera/Microphone access needed for video calls. You\'ll be asked again when a call arrives.'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 
