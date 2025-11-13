@@ -38,10 +38,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeWebRTC();
+    // Schedule initialization for after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeWebRTC();
+    });
   }
 
-  void _initializeWebRTC() async {
+  Future<void> _initializeWebRTC() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final webrtcService = Provider.of<WebRTCService>(context, listen: false);
     final appConfigService = Provider.of<AppConfigService>(context, listen: false);
@@ -79,37 +82,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// This is similar to how we initialize FCM early
   Future<void> _requestMediaPermissionsEarly() async {
     try {
-      debugPrint('🎥 Requesting camera/mic permissions early...');
+      debugPrint('🎥 ========== REQUESTING CAMERA/MIC PERMISSIONS ==========');
 
-      // Request permissions
+      // Check current status first
+      final cameraStatusBefore = await Permission.camera.status;
+      final micStatusBefore = await Permission.microphone.status;
+      debugPrint('📸 Camera status BEFORE request: $cameraStatusBefore');
+      debugPrint('🎤 Mic status BEFORE request: $micStatusBefore');
+
+      // Request camera permission
+      debugPrint('📸 Requesting camera permission...');
       final cameraStatus = await Permission.camera.request();
-      final micStatus = await Permission.microphone.request();
+      debugPrint('📸 Camera permission result: $cameraStatus');
+      debugPrint('   isGranted: ${cameraStatus.isGranted}');
+      debugPrint('   isDenied: ${cameraStatus.isDenied}');
+      debugPrint('   isPermanentlyDenied: ${cameraStatus.isPermanentlyDenied}');
+      debugPrint('   isRestricted: ${cameraStatus.isRestricted}');
+      debugPrint('   isLimited: ${cameraStatus.isLimited}');
 
-      debugPrint('📸 Camera permission: $cameraStatus');
-      debugPrint('🎤 Microphone permission: $micStatus');
+      // Request microphone permission
+      debugPrint('🎤 Requesting microphone permission...');
+      final micStatus = await Permission.microphone.request();
+      debugPrint('🎤 Microphone permission result: $micStatus');
+      debugPrint('   isGranted: ${micStatus.isGranted}');
+      debugPrint('   isDenied: ${micStatus.isDenied}');
+      debugPrint('   isPermanentlyDenied: ${micStatus.isPermanentlyDenied}');
+      debugPrint('   isRestricted: ${micStatus.isRestricted}');
+      debugPrint('   isLimited: ${micStatus.isLimited}');
 
       if (cameraStatus.isGranted && micStatus.isGranted) {
-        debugPrint('✅ Media permissions granted!');
+        debugPrint('✅ ========== PERMISSIONS GRANTED! ==========');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Camera and Microphone access granted!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
       } else if (cameraStatus.isDenied || micStatus.isDenied) {
-        debugPrint('⚠️ Media permissions denied - user can grant later');
+        debugPrint('⚠️ ========== PERMISSIONS DENIED ==========');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('⚠️ Camera/Microphone denied. You can grant later when a call arrives.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
       } else if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
-        debugPrint('❌ Media permissions permanently denied');
-        // Show one-time alert to guide user to settings
+        debugPrint('❌ ========== PERMISSIONS PERMANENTLY DENIED ==========');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Camera/Microphone access denied. Enable in Settings to make video calls.'),
               action: SnackBarAction(
-                label: 'Settings',
+                label: 'Open Settings',
                 onPressed: () => openAppSettings(),
               ),
               duration: const Duration(seconds: 10),
+              backgroundColor: Colors.orange,
             ),
           );
         }
       }
-    } catch (e) {
-      debugPrint('❌ Error requesting early permissions: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ ========== ERROR REQUESTING PERMISSIONS ==========');
+      debugPrint('❌ Error: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
       // Non-critical error - user can still try when call arrives
     }
   }
