@@ -3,50 +3,12 @@ name: Build iOS App
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  build-ios:
-    runs-on: macos-latest
-    if: github.event_name != 'workflow_dispatch' # Only run on push, not manual trigger
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.5'
-          channel: 'stable'
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Run Flutter doctor
-        run: flutter doctor -v
-
-      - name: Build iOS (without signing)
-        run: |
-          cd ios
-          pod install
-          cd ..
-          flutter build ios --release --no-codesign
-
-      - name: Upload iOS build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-build
-          path: build/ios/iphoneos/Runner.app
-          retention-days: 7
-
-  # Optional: Build with signing (requires certificates)
+  # Only build signed IPA (skip unsigned build to save time)
   build-ios-signed:
     runs-on: macos-latest
-    if: github.event_name == 'workflow_dispatch' # Only run manually
 
     steps:
       - name: Checkout code
@@ -61,6 +23,12 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Install CocoaPods dependencies (with cache)
+        run: |
+          cd ios
+          pod install --repo-update
+          cd ..
 
       - name: Install Apple Certificate
         if: env.IOS_CERTIFICATE_BASE64 != ''
@@ -108,13 +76,10 @@ jobs:
 
       - name: Build iOS with signing
         run: |
-          cd ios
-          pod install
-          cd ..
           flutter build ipa --release \
             --export-options-plist=ios/ExportOptions.plist \
-            --build-name=1.0.0 \
-            --build-number=1
+            --build-name=1.0.${{ github.run_number }} \
+            --build-number=${{ github.run_number }}
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
