@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
@@ -80,8 +81,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     // Navigate to video call screen (only once)
+    // Use scheduleMicrotask to defer navigation until after current button handler completes
     if (webrtcService.isInCall && !_isNavigatingToCall) {
-      _navigateToCallScreen();
+      scheduleMicrotask(() {
+        if (mounted && webrtcService.isInCall) {
+          _navigateToCallScreen();
+        }
+      });
     }
 
     // Reset flags when call ends
