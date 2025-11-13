@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import '../services/webrtc_service.dart';
 
@@ -171,21 +172,30 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                         try {
                           await webrtcService.answerCall();
                         } catch (e) {
+                          debugPrint('❌ Error in incoming call dialog: $e');
+
                           // Show error message if permissions denied or other error
                           if (context.mounted) {
+                            final isPermissionError = e.toString().contains('permission');
+
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  e.toString().contains('permission')
-                                      ? 'Camera or microphone permission denied. Please enable in settings.'
+                                  isPermissionError
+                                      ? 'Camera or microphone permission denied. Tap "Settings" to enable.'
                                       : 'Failed to answer call: ${e.toString()}',
                                 ),
                                 backgroundColor: Colors.red,
-                                duration: const Duration(seconds: 5),
+                                duration: const Duration(seconds: 10),
                                 action: SnackBarAction(
-                                  label: 'OK',
+                                  label: isPermissionError ? 'Settings' : 'OK',
                                   textColor: Colors.white,
-                                  onPressed: () {},
+                                  onPressed: () async {
+                                    if (isPermissionError) {
+                                      // Open app settings
+                                      await openAppSettings();
+                                    }
+                                  },
                                 ),
                               ),
                             );

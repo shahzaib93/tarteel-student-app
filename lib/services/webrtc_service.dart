@@ -178,10 +178,19 @@ class WebRTCService with ChangeNotifier {
     if (callerInfo == null) return;
 
     try {
+      debugPrint('📞 Starting answerCall()...');
+
+      // Check current permission status first
+      final cameraStatusCheck = await Permission.camera.status;
+      final micStatusCheck = await Permission.microphone.status;
+      debugPrint('🔍 Current permissions - Camera: $cameraStatusCheck, Mic: $micStatusCheck');
+
       // Request camera and microphone permissions
       debugPrint('🔐 Requesting camera and microphone permissions...');
       final cameraStatus = await Permission.camera.request();
       final micStatus = await Permission.microphone.request();
+
+      debugPrint('📋 Permission results - Camera: $cameraStatus, Mic: $micStatus');
 
       if (cameraStatus.isDenied || micStatus.isDenied) {
         debugPrint('❌ Permissions denied: camera=$cameraStatus, mic=$micStatus');
