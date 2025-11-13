@@ -167,7 +167,30 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                       onPressed: () async {
                         _stopRinging();
                         Navigator.of(context).pop();
-                        await webrtcService.answerCall();
+
+                        try {
+                          await webrtcService.answerCall();
+                        } catch (e) {
+                          // Show error message if permissions denied or other error
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  e.toString().contains('permission')
+                                      ? 'Camera or microphone permission denied. Please enable in settings.'
+                                      : 'Failed to answer call: ${e.toString()}',
+                                ),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 5),
+                                action: SnackBarAction(
+                                  label: 'OK',
+                                  textColor: Colors.white,
+                                  onPressed: () {},
+                                ),
+                              ),
+                            );
+                          }
+                        }
                       },
                       backgroundColor: Colors.green,
                       child: const Icon(Icons.videocam, color: Colors.white),
