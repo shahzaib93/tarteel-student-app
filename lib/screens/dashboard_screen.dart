@@ -40,7 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _initializeWebRTC();
   }
 
-  void _initializeWebRTC() {
+  void _initializeWebRTC() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final webrtcService = Provider.of<WebRTCService>(context, listen: false);
     final appConfigService = Provider.of<AppConfigService>(context, listen: false);
@@ -49,6 +49,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (authService.currentUser != null) {
       // Initialize FCM for push notifications
       fcmService.initialize(authService.currentUser!.uid);
+
+      // 🎥 REQUEST CAMERA & MIC PERMISSIONS EARLY (like FCM)
+      // This prevents crashes during call acceptance
+      await _requestMediaPermissionsEarly();
 
       // Get socket URL from Firestore config
       final socketUrl = appConfigService.getSocketUrl();
@@ -68,6 +72,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Listen for incoming calls
     webrtcService.addListener(_handleWebRTCChanges);
+  }
+
+  /// Request camera and microphone permissions early (on app startup)
+  /// This is similar to how we initialize FCM early
+  Future<void> _requestMediaPermissionsEarly() async {
+    try {
+      debugPrint('🎥 Requesting camera/mic permissions early...');
+
+      // Request permissions
+      final cameraStatus = await Permission.camera.request();
+      final micStatus = await Permission.microphone.request();
+
+      debugPrint('📸 Camera permission: $cameraStatus');
+      debugPrint('🎤 Microphone permission: $micStatus');
+
+      if (cameraStatus.isGranted && micStatus.isGranted) {
+        debugPrint('✅ Media permissions granted!');
+      } else if (cameraStatus.isDenied || micStatus.isDenied) {
+        debugPrint('⚠️ Media permissions denied - user can grant later');
+      } else if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
+        debugPrint('❌ Media permissions permanently denied');
+        // Show one-time alert to guide user to settings
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Camera/Microphone access denied. Enable in Settings to make video calls.'),
+              action: SnackBarAction(
+                label: 'Settings',
+                onPressed: () => openAppSettings(),
+              ),
+              duration: const Duration(seconds: 10),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error requesting early permissions: $e');
+      // Non-critical error - user can still try when call arrives
+    }
   }
 
   void _handleWebRTCChanges() {
