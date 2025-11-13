@@ -113,14 +113,7 @@ class WebRTCService with ChangeNotifier {
         debugPrint('📦 Call data: $data');
 
         callerInfo = data;
-
-        // Add a small delay AND use scheduleMicrotask to ensure we're not in build phase
-        await Future.delayed(const Duration(milliseconds: 100));
-        scheduleMicrotask(() {
-          if (callerInfo != null) { // Double check it's still valid
-            notifyListeners();
-          }
-        });
+        notifyListeners();
       } catch (e) {
         debugPrint('❌ Error handling incoming call: $e');
       }
@@ -304,9 +297,6 @@ class WebRTCService with ChangeNotifier {
 
       isInCall = true;
       currentCallId = callerInfo!['callId'];
-
-      // Delay notifyListeners to avoid calling during button press handler
-      await Future.delayed(const Duration(milliseconds: 100));
       notifyListeners();
 
       debugPrint('✅ Call answered successfully');
