@@ -76,7 +76,9 @@ class IncomingCallDialog extends StatelessWidget {
                     FloatingActionButton(
                       onPressed: () {
                         webrtcService.rejectCall();
-                        Navigator.of(context).pop();
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
                       },
                       backgroundColor: Colors.red,
                       child: const Icon(Icons.call_end, color: Colors.white),
@@ -94,8 +96,26 @@ class IncomingCallDialog extends StatelessWidget {
                   children: [
                     FloatingActionButton(
                       onPressed: () async {
-                        Navigator.of(context).pop();
-                        await webrtcService.answerCall();
+                        try {
+                          // Call answerCall first, let it complete
+                          await webrtcService.answerCall();
+                          // Only pop dialog after success
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                          }
+                        } catch (e) {
+                          debugPrint('❌ Error in Accept button: $e');
+                          // Show error to user
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to answer call: ${e.toString()}'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
                       },
                       backgroundColor: Colors.green,
                       child: const Icon(Icons.videocam, color: Colors.white),

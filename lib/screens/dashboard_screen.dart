@@ -77,14 +77,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Show incoming call dialog (only once)
     if (webrtcService.callerInfo != null && !webrtcService.isInCall && !_isShowingDialog) {
-      _showIncomingCallDialog();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && webrtcService.callerInfo != null && !webrtcService.isInCall) {
+          _showIncomingCallDialog();
+        }
+      });
     }
 
     // Navigate to video call screen (only once)
-    // Use scheduleMicrotask to defer navigation until after current button handler completes
     if (webrtcService.isInCall && !_isNavigatingToCall) {
-      scheduleMicrotask(() {
-        if (mounted && webrtcService.isInCall) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && webrtcService.isInCall && !_isNavigatingToCall) {
           _navigateToCallScreen();
         }
       });
