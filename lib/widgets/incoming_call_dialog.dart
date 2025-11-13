@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../services/webrtc_service.dart';
 import 'video_call_screen.dart';
 
@@ -14,6 +15,24 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
   bool _isAnswering = false;
   String _statusMessage = '';
   bool _hasNavigated = false; // Prevent double navigation
+
+  @override
+  void initState() {
+    super.initState();
+    // Request permissions IMMEDIATELY when dialog appears
+    _requestPermissionsEarly();
+  }
+
+  Future<void> _requestPermissionsEarly() async {
+    try {
+      debugPrint('🔐 Requesting permissions EARLY (when dialog shows)');
+      await Permission.camera.request();
+      await Permission.microphone.request();
+      debugPrint('✅ Early permissions requested');
+    } catch (e) {
+      debugPrint('⚠️ Error requesting early permissions: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
