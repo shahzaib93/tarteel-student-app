@@ -71,33 +71,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _handleWebRTCChanges() {
-    if (!mounted) return;
-
-    final webrtcService = Provider.of<WebRTCService>(context, listen: false);
-
-    // Show incoming call dialog (only once)
-    if (webrtcService.callerInfo != null && !webrtcService.isInCall && !_isShowingDialog) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && webrtcService.callerInfo != null && !webrtcService.isInCall) {
-          _showIncomingCallDialog();
-        }
-      });
-    }
-
-    // Navigate to video call screen (only once)
-    if (webrtcService.isInCall && !_isNavigatingToCall) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && webrtcService.isInCall && !_isNavigatingToCall) {
-          _navigateToCallScreen();
-        }
-      });
-    }
-
-    // Reset flags when call ends
-    if (!webrtcService.isInCall && webrtcService.callerInfo == null) {
-      _isShowingDialog = false;
-      _isNavigatingToCall = false;
-    }
+    // DO NOTHING - let the dialog handle everything
   }
 
   void _showIncomingCallDialog() {
@@ -107,7 +81,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       barrierDismissible: false,
       builder: (context) => const IncomingCallDialog(),
     ).then((_) {
-      // Reset flag when dialog closes
       if (mounted) {
         setState(() {
           _isShowingDialog = false;
@@ -124,7 +97,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         fullscreenDialog: true,
       ),
     ).then((_) {
-      // Reset flag when returning from call screen
       if (mounted) {
         setState(() {
           _isNavigatingToCall = false;

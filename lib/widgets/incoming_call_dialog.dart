@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/webrtc_service.dart';
+import 'video_call_screen.dart';
 
 class IncomingCallDialog extends StatefulWidget {
   const IncomingCallDialog({super.key});
@@ -15,18 +16,41 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final webrtcService = Provider.of<WebRTCService>(context);
-    final callerInfo = webrtcService.callerInfo;
+    return Consumer<WebRTCService>(
+      builder: (context, webrtcService, child) {
+        final callerInfo = webrtcService.callerInfo;
 
-    // If caller info is null, schedule dialog dismissal after build completes
-    if (callerInfo == null && !_isAnswering) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) {
-          Navigator.of(context).pop();
+        // If call is accepted and in progress, navigate to call screen
+        if (webrtcService.isInCall && _isAnswering) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              Navigator.of(context).pop(); // Close dialog
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const VideoCallScreen(),
+                  fullscreenDialog: true,
+                ),
+              );
+            }
+          });
         }
-      });
-      return const SizedBox.shrink();
-    }
+
+        // If caller info is null, dismiss dialog
+        if (callerInfo == null && !_isAnswering) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
+          });
+          return const SizedBox.shrink();
+        }
+
+        return _buildDialog(context, webrtcService, callerInfo);
+      },
+    );
+  }
+
+  Widget _buildDialog(BuildContext context, WebRTCService webrtcService, Map<String, dynamic>? callerInfo) {
 
     return Dialog(
       shape: RoundedRectangleBorder(
