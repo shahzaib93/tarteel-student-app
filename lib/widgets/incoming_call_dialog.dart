@@ -55,7 +55,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
 
             // Caller Name
             Text(
-              callerInfo['callerName'] ?? 'Unknown',
+              callerInfo?['callerName'] ?? 'Unknown',
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
