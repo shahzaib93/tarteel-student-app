@@ -86,7 +86,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const IncomingCallDialog(),
+      builder: (context) => IncomingCallDialog(
+        onAccept: _handleAcceptCall,
+        onReject: _handleRejectCall,
+      ),
     ).then((_) {
       if (mounted) {
         setState(() {
@@ -94,6 +97,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     });
+  }
+
+  /// Handle call acceptance - does ALL the work (like React App.jsx)
+  /// Permissions, answering call, navigation - everything happens here
+  Future<void> _handleAcceptCall() async {
+    if (_isNavigatingToCall) return; // Prevent double-tap
+
+    final webrtcService = Provider.of<WebRTCService>(context, listen: false);
+
+    try {
+      debugPrint('📞 Dashboard: Starting call acceptance flow...');
+
+      // Answer the call (this handles permissions internally)
+      debugPrint('📞 Dashboard: Calling answerCall()...');
+      await webrtcService.answerCall();
+      debugPrint('📞 Dashboard: answerCall() completed, isInCall=${webrtcService.isInCall}');
+
+      // Check if call was actually established
+      if (!webrtcService.isInCall) {
+        debugPrint('❌ Dashboard: Call not established after answerCall()');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to connect call'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Navigate to call screen
+      debugPrint('📞 Dashboard: Navigating to VideoCallScreen...');
+      _navigateToCallScreen();
+      debugPrint('✅ Dashboard: Call acceptance flow completed successfully');
+    } catch (e) {
+      debugPrint('❌ Dashboard: Error in call acceptance: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to answer call: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Handle call rejection
+  void _handleRejectCall() {
+    final webrtcService = Provider.of<WebRTCService>(context, listen: false);
+    debugPrint('📞 Dashboard: Rejecting call');
+    webrtcService.rejectCall();
   }
 
   void _navigateToCallScreen() {

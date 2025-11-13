@@ -1,39 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../services/webrtc_service.dart';
-import 'video_call_screen.dart';
 
-class IncomingCallDialog extends StatefulWidget {
-  const IncomingCallDialog({super.key});
+/// Incoming call dialog - PURE UI COMPONENT
+/// Does NOT handle permissions, navigation, or call logic
+/// Only shows UI and calls callbacks (like React IncomingCallModal)
+class IncomingCallDialog extends StatelessWidget {
+  final VoidCallback? onAccept;
+  final VoidCallback? onReject;
 
-  @override
-  State<IncomingCallDialog> createState() => _IncomingCallDialogState();
-}
-
-class _IncomingCallDialogState extends State<IncomingCallDialog> {
-  bool _isAnswering = false;
-  String _statusMessage = '';
-  bool _hasNavigated = false; // Prevent double navigation
-  Map<String, dynamic>? _savedCallerInfo; // Save caller info in case it becomes null during answering
-
-  @override
-  void initState() {
-    super.initState();
-    // Request permissions IMMEDIATELY when dialog appears
-    _requestPermissionsEarly();
-  }
-
-  Future<void> _requestPermissionsEarly() async {
-    try {
-      debugPrint('🔐 Requesting permissions EARLY (when dialog shows)');
-      await Permission.camera.request();
-      await Permission.microphone.request();
-      debugPrint('✅ Early permissions requested');
-    } catch (e) {
-      debugPrint('⚠️ Error requesting early permissions: $e');
-    }
-  }
+  const IncomingCallDialog({
+    super.key,
+    this.onAccept,
+    this.onReject,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -41,14 +21,8 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
       builder: (context, webrtcService, child) {
         final callerInfo = webrtcService.callerInfo;
 
-        // Save caller info the first time we see it
-        if (callerInfo != null && _savedCallerInfo == null) {
-          _savedCallerInfo = callerInfo;
-        }
-
-        // Only auto-dismiss if caller hung up AND we're not in the middle of answering
-        // This prevents dismissal during permission prompts
-        if (callerInfo == null && !_isAnswering && !_hasNavigated) {
+        // Auto-dismiss if caller hung up
+        if (callerInfo == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
               Navigator.of(context).pop();
@@ -57,186 +31,108 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
           return const SizedBox.shrink();
         }
 
-        // Use saved caller info if current one is null (happens during permission requests)
-        final displayCallerInfo = callerInfo ?? _savedCallerInfo;
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Caller Avatar
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.person,
+                    size: 40,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 16),
 
-        return _buildDialog(context, webrtcService, displayCallerInfo);
-      },
-    );
-  }
-
-  Widget _buildDialog(BuildContext context, WebRTCService webrtcService, Map<String, dynamic>? callerInfo) {
-
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Caller Avatar
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.person,
-                size: 40,
-                color: Theme.of(context).primaryColor,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Caller Name
-            Text(
-              callerInfo?['callerName'] ?? 'Unknown',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-
-            // Incoming Call Text
-            const Text(
-              'Incoming video call...',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Status Message
-            if (_statusMessage.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text(
-                  _statusMessage,
+                // Caller Name
+                Text(
+                  callerInfo['callerName'] ?? 'Unknown',
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blue,
                   ),
                   textAlign: TextAlign.center,
                 ),
-              ),
+                const SizedBox(height: 8),
 
-            // Loading indicator
-            if (_isAnswering)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 16),
-                child: CircularProgressIndicator(),
-              ),
-
-            // Action Buttons
-            if (!_isAnswering)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Reject Button
-                  Column(
-                    children: [
-                      FloatingActionButton(
-                        onPressed: () {
-                          // Just reject - dialog will auto-dismiss when callerInfo becomes null
-                          webrtcService.rejectCall();
-                        },
-                        backgroundColor: Colors.red,
-                        child: const Icon(Icons.call_end, color: Colors.white),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Decline',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ],
+                // Incoming Call Text
+                const Text(
+                  'Incoming video call...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
                   ),
+                ),
+                const SizedBox(height: 32),
 
-                  // Accept Button
-                  Column(
-                    children: [
-                      FloatingActionButton(
-                        onPressed: () async {
-                          setState(() {
-                            _isAnswering = true;
-                            _statusMessage = 'Connecting...';
-                          });
-
-                          try {
-                            setState(() => _statusMessage = 'Starting call...');
-                            await Future.delayed(const Duration(milliseconds: 100));
-
-                            debugPrint('🔵 About to call answerCall()');
-                            await webrtcService.answerCall();
-                            debugPrint('🟢 answerCall() returned, isInCall=${webrtcService.isInCall}');
-
-                            if (!webrtcService.isInCall) {
-                              setState(() => _statusMessage = 'ERROR: isInCall is FALSE after answerCall!');
-                              await Future.delayed(const Duration(seconds: 2));
-                              if (mounted) {
-                                Navigator.of(context).pop();
-                              }
-                              return;
+                // Action Buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Reject Button
+                    Column(
+                      children: [
+                        FloatingActionButton(
+                          onPressed: () {
+                            // Close dialog first, THEN reject
+                            Navigator.of(context).pop();
+                            if (onReject != null) {
+                              onReject!();
+                            } else {
+                              webrtcService.rejectCall();
                             }
+                          },
+                          backgroundColor: Colors.red,
+                          child: const Icon(Icons.call_end, color: Colors.white),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Decline',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
 
-                            setState(() => _statusMessage = 'Navigating to call...');
-                            await Future.delayed(const Duration(milliseconds: 300));
-
-                            // Navigate directly to call screen
-                            if (mounted) {
-                              debugPrint('🚀 Navigating to VideoCallScreen');
-                              Navigator.of(context).pop(); // Close dialog
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => const VideoCallScreen(),
-                                  fullscreenDialog: true,
-                                ),
-                              );
+                    // Accept Button
+                    Column(
+                      children: [
+                        FloatingActionButton(
+                          onPressed: () {
+                            // Close dialog first, THEN accept (parent handles everything)
+                            Navigator.of(context).pop();
+                            if (onAccept != null) {
+                              onAccept!();
                             }
-                          } catch (e) {
-                            if (mounted) {
-                              setState(() {
-                                _isAnswering = false;
-                                _statusMessage = 'Error: ${e.toString()}';
-                              });
-
-                              await Future.delayed(const Duration(seconds: 3));
-
-                              if (context.mounted) {
-                                Navigator.of(context).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Failed: ${e.toString()}'),
-                                    backgroundColor: Colors.red,
-                                    duration: const Duration(seconds: 5),
-                                  ),
-                                );
-                              }
-                            }
-                          }
-                        },
-                        backgroundColor: Colors.green,
-                        child: const Icon(Icons.videocam, color: Colors.white),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Accept',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
+                          },
+                          backgroundColor: Colors.green,
+                          child: const Icon(Icons.videocam, color: Colors.white),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Accept',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
