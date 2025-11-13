@@ -40,23 +40,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
       builder: (context, webrtcService, child) {
         final callerInfo = webrtcService.callerInfo;
 
-        // If call is accepted and in progress, navigate to call screen (ONLY ONCE)
-        if (webrtcService.isInCall && _isAnswering && !_hasNavigated) {
-          _hasNavigated = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) {
-              Navigator.of(context).pop(); // Close dialog
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const VideoCallScreen(),
-                  fullscreenDialog: true,
-                ),
-              );
-            }
-          });
-        }
-
-        // If caller info is null, dismiss dialog
+        // If caller info is null and we're not answering, dismiss dialog
         if (callerInfo == null && !_isAnswering) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
@@ -183,8 +167,19 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
 
                             await webrtcService.answerCall();
 
+                            debugPrint('✅ answerCall() completed, isInCall=${webrtcService.isInCall}');
                             setState(() => _statusMessage = 'Call connected!');
-                            // Navigation will happen automatically via Consumer when isInCall=true
+
+                            // Navigate directly to call screen
+                            if (mounted && webrtcService.isInCall) {
+                              Navigator.of(context).pop(); // Close dialog
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => const VideoCallScreen(),
+                                  fullscreenDialog: true,
+                                ),
+                              );
+                            }
                           } catch (e) {
                             if (mounted) {
                               setState(() {
