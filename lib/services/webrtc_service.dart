@@ -18,6 +18,7 @@ class WebRTCService with ChangeNotifier {
 
   bool isInCall = false;
   String? currentCallId;
+  String? remoteUserId;
   Map<String, dynamic>? callerInfo;
 
   // Queue for ICE candidates received before peer connection is ready
@@ -221,6 +222,8 @@ class WebRTCService with ChangeNotifier {
         peerConnection!.addTrack(track, localStream!);
       });
 
+      remoteUserId = callerInfo!['callerId'];
+
       // Set remote description (offer)
       await peerConnection!.setRemoteDescription(
         RTCSessionDescription(
@@ -277,15 +280,20 @@ class WebRTCService with ChangeNotifier {
     });
 
     callerInfo = null;
+    remoteUserId = null;
     notifyListeners();
   }
 
   /// End active call
   void endCall() {
     if (currentCallId != null) {
-      socket!.emit('webrtc-call-end', {
+      final payload = {
         'callId': currentCallId,
-      });
+      };
+      if (remoteUserId != null) {
+        payload['recipientId'] = remoteUserId;
+      }
+      socket!.emit('webrtc-call-end', payload);
     }
 
     // Close peer connection
@@ -311,6 +319,7 @@ class WebRTCService with ChangeNotifier {
     isInCall = false;
     currentCallId = null;
     callerInfo = null;
+    remoteUserId = null;
 
     notifyListeners();
   }

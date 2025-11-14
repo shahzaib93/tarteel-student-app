@@ -10,13 +10,7 @@ class IncomingCallDialog extends StatelessWidget {
     final webrtcService = Provider.of<WebRTCService>(context);
     final callerInfo = webrtcService.callerInfo;
 
-    // If caller info is null, schedule dialog dismissal after build completes
     if (callerInfo == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) {
-          Navigator.of(context).pop();
-        }
-      });
       return const SizedBox.shrink();
     }
 

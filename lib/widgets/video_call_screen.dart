@@ -88,10 +88,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     if (needsUpdate) {
       setState(() {});
     }
-
-    if (!webrtcService.isInCall && mounted) {
-      Navigator.of(context).pop();
-    }
   }
 
   @override

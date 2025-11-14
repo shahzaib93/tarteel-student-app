@@ -22,7 +22,6 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
 
-  // Create screens once, not on every build
   late final List<Widget> _screens = [
     const TeachersListScreen(),
     const MessagesScreen(),
@@ -30,19 +29,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const SettingsScreen(),
   ];
 
+  AuthService? _authService;
+  FirestoreService? _firestoreService;
+  WebRTCService? _webrtcService;
+  AppConfigService? _appConfigService;
+
+  bool _webRtcInitialized = false;
+  bool _isVideoCallScreenOpen = false;
+  bool _isIncomingCallDialogVisible = false;
+
   @override
-  void initState() {
-    super.initState();
-    _initializeWebRTC();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _authService ??= Provider.of<AuthService>(context, listen: false);
+    _firestoreService ??= Provider.of<FirestoreService>(context, listen: false);
+    _webrtcService ??= Provider.of<WebRTCService>(context, listen: false);
+    _appConfigService ??= Provider.of<AppConfigService>(context, listen: false);
+
+    if (!_webRtcInitialized) {
+      _webRtcInitialized = true;
+      _initializeWebRTC();
+    }
   }
 
   void _initializeWebRTC() {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final webrtcService = Provider.of<WebRTCService>(context, listen: false);
-    final appConfigService = Provider.of<AppConfigService>(context, listen: false);
+    final authService = _authService;
+    final webrtcService = _webrtcService;
+    final appConfigService = _appConfigService;
+    final firestoreService = _firestoreService;
+
+    if (authService == null || webrtcService == null || appConfigService == null) {
+      return;
+    }
 
     if (authService.currentUser != null) {
-      // Get socket URL from Firestore config
       final socketUrl = appConfigService.getSocketUrl();
 
       debugPrint('🔌 Connecting to socket: $socketUrl');
@@ -53,52 +73,82 @@ class _DashboardScreenState extends State<DashboardScreen> {
         socketUrl: socketUrl,
       );
 
-      // Set user online
-      final firestoreService = Provider.of<FirestoreService>(context, listen: false);
-      firestoreService.setOnlineStatus(authService.currentUser!.uid, true);
+      firestoreService?.setOnlineStatus(authService.currentUser!.uid, true);
     }
 
-    // Listen for incoming calls
     webrtcService.addListener(_handleWebRTCChanges);
   }
 
   void _handleWebRTCChanges() {
-    final webrtcService = Provider.of<WebRTCService>(context, listen: false);
-
-    // Show incoming call dialog
-    if (webrtcService.callerInfo != null && !webrtcService.isInCall) {
-      _showIncomingCallDialog();
+    final webrtcService = _webrtcService;
+    if (webrtcService == null) {
+      return;
     }
 
-    // Show video call screen
-    if (webrtcService.isInCall) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => const VideoCallScreen(),
-          fullscreenDialog: true,
-        ),
-      );
+    final hasIncomingCall = webrtcService.callerInfo != null && !webrtcService.isInCall;
+    if (hasIncomingCall && !_isIncomingCallDialogVisible) {
+      _showIncomingCallDialog();
+    } else if (!hasIncomingCall && _isIncomingCallDialogVisible) {
+      _dismissIncomingCallDialog();
+    }
+
+    if (webrtcService.isInCall && !_isVideoCallScreenOpen) {
+      _isVideoCallScreenOpen = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context)
+            .push(
+              MaterialPageRoute(
+                builder: (context) => const VideoCallScreen(),
+                fullscreenDialog: true,
+              ),
+            )
+            .whenComplete(() {
+          _isVideoCallScreenOpen = false;
+        });
+      });
+    } else if (!webrtcService.isInCall && _isVideoCallScreenOpen) {
+      _isVideoCallScreenOpen = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+      });
     }
   }
 
   void _showIncomingCallDialog() {
+    if (_isIncomingCallDialogVisible) {
+      return;
+    }
+    _isIncomingCallDialogVisible = true;
     showDialog(
       context: context,
       barrierDismissible: false,
+      useRootNavigator: true,
       builder: (context) => const IncomingCallDialog(),
-    );
+    ).whenComplete(() {
+      _isIncomingCallDialogVisible = false;
+    });
+  }
+
+  void _dismissIncomingCallDialog() {
+    if (!_isIncomingCallDialogVisible) {
+      return;
+    }
+    Navigator.of(context, rootNavigator: true).maybePop();
+    _isIncomingCallDialogVisible = false;
   }
 
   @override
   void dispose() {
-    final webrtcService = Provider.of<WebRTCService>(context, listen: false);
-    webrtcService.removeListener(_handleWebRTCChanges);
+    _webrtcService?.removeListener(_handleWebRTCChanges);
 
-    // Set user offline
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final firestoreService = Provider.of<FirestoreService>(context, listen: false);
-    if (authService.currentUser != null) {
-      firestoreService.setOnlineStatus(authService.currentUser!.uid, false);
+    final authService = _authService;
+    final firestoreService = _firestoreService;
+    if (authService?.currentUser != null && firestoreService != null) {
+      firestoreService.setOnlineStatus(authService!.currentUser!.uid, false);
     }
 
     super.dispose();
