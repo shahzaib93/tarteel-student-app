@@ -35,9 +35,6 @@ dependencies:
   url_launcher: ^6.2.2
   permission_handler: ^11.1.0
 
-  # Push Notifications
-  firebase_messaging: ^15.1.5
-
 dev_dependencies:
   flutter_test:
     sdk: flutter

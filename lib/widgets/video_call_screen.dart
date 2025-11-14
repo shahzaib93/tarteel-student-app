@@ -35,34 +35,13 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   Future<void> _initRenderers() async {
-    try {
-      await _localRenderer.initialize();
-      await _remoteRenderer.initialize();
-      debugPrint('✅ VideoCallScreen: Renderers initialized');
-    } catch (e) {
-      debugPrint('❌ VideoCallScreen: Failed to initialize renderers: $e');
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-      return;
-    }
+    await _localRenderer.initialize();
+    await _remoteRenderer.initialize();
 
-    if (!mounted) return;
-
-    WebRTCService? webrtcService;
-    try {
-      webrtcService = Provider.of<WebRTCService>(context, listen: false);
-    } catch (e) {
-      debugPrint('❌ VideoCallScreen: Failed to get WebRTCService: $e');
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-      return;
-    }
+    final webrtcService = Provider.of<WebRTCService>(context, listen: false);
 
     if (webrtcService.localStream != null) {
       _localRenderer.srcObject = webrtcService.localStream;
-      debugPrint('✅ VideoCallScreen: Local stream attached');
 
       // Sync initial UI state with actual track states
       final audioTracks = webrtcService.localStream!.getAudioTracks();
@@ -79,19 +58,13 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           _isVideoOff = !videoTracks.first.enabled;
         });
       }
-    } else {
-      debugPrint('⚠️ VideoCallScreen: No local stream available');
     }
 
     if (webrtcService.remoteStream != null) {
       _remoteRenderer.srcObject = webrtcService.remoteStream;
-      debugPrint('✅ VideoCallScreen: Remote stream attached');
-    } else {
-      debugPrint('⚠️ VideoCallScreen: No remote stream yet (will arrive later)');
     }
 
     webrtcService.addListener(_updateStreams);
-    debugPrint('✅ VideoCallScreen: Listener added for stream updates');
   }
 
   void _updateStreams() {
@@ -162,23 +135,10 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     }
   }
 
-  void _endCall() async {
-    if (!mounted) return;
-
+  void _endCall() {
     final webrtcService = Provider.of<WebRTCService>(context, listen: false);
-
-    // Remove listener first to prevent double navigation
-    webrtcService.removeListener(_updateStreams);
-
-    // End the call
     webrtcService.endCall();
-
-    // Wait a bit for cleanup, then navigate
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    if (mounted) {
-      Navigator.of(context).pop();
-    }
+    Navigator.of(context).pop();
   }
 
   @override

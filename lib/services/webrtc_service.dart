@@ -1,8 +1,6 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-import 'package:permission_handler/permission_handler.dart';
 import 'settings_service.dart';
 
 class WebRTCService with ChangeNotifier {
@@ -108,15 +106,9 @@ class WebRTCService with ChangeNotifier {
   void _setupSignalingListeners() {
     // Incoming call
     socket!.on('webrtc-offer', (data) async {
-      try {
-        debugPrint('📞 Incoming call from ${data['callerName']}');
-        debugPrint('📦 Call data: $data');
-
-        callerInfo = data;
-        notifyListeners();
-      } catch (e) {
-        debugPrint('❌ Error handling incoming call: $e');
-      }
+      debugPrint('📞 Incoming call from ${data['callerName']}');
+      callerInfo = data;
+      notifyListeners();
     });
 
     // Answer received
@@ -182,55 +174,9 @@ class WebRTCService with ChangeNotifier {
 
   /// Answer incoming call
   Future<void> answerCall() async {
-    if (callerInfo == null) {
-      debugPrint('⚠️ answerCall() called but callerInfo is null');
-      return;
-    }
-
-    debugPrint('📞 ========== STARTING answerCall() ==========');
+    if (callerInfo == null) return;
 
     try {
-      // Check current permission status first
-      final cameraStatusCheck = await Permission.camera.status;
-      final micStatusCheck = await Permission.microphone.status;
-      debugPrint('🔍 BEFORE REQUEST - Camera: $cameraStatusCheck, Mic: $micStatusCheck');
-      debugPrint('   Camera isPermanentlyDenied: ${cameraStatusCheck.isPermanentlyDenied}');
-      debugPrint('   Mic isPermanentlyDenied: ${micStatusCheck.isPermanentlyDenied}');
-
-      // If permanently denied, open settings
-      if (cameraStatusCheck.isPermanentlyDenied || micStatusCheck.isPermanentlyDenied) {
-        debugPrint('❌ Permissions are PERMANENTLY DENIED - need to open settings');
-        throw Exception('Permissions permanently denied. Please go to Settings > App > Permissions and enable Camera and Microphone.');
-      }
-
-      // Request camera and microphone permissions
-      debugPrint('🔐 REQUESTING permissions now...');
-      final cameraStatus = await Permission.camera.request();
-      debugPrint('📸 Camera permission result: $cameraStatus');
-
-      final micStatus = await Permission.microphone.request();
-      debugPrint('🎤 Microphone permission result: $micStatus');
-
-      // Check if denied
-      if (cameraStatus.isDenied || micStatus.isDenied) {
-        debugPrint('❌ Permissions DENIED by user: camera=$cameraStatus, mic=$micStatus');
-        throw Exception('Camera or microphone permission was denied. Please accept permissions to make video calls.');
-      }
-
-      // Check if permanently denied AFTER request
-      if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
-        debugPrint('❌ Permissions PERMANENTLY DENIED after request');
-        throw Exception('Permissions permanently denied. Please enable in device Settings.');
-      }
-
-      // Check if granted
-      if (!cameraStatus.isGranted || !micStatus.isGranted) {
-        debugPrint('❌ Permissions NOT GRANTED: camera=$cameraStatus, mic=$micStatus');
-        throw Exception('Camera or microphone permission not granted. Status: Camera=$cameraStatus, Mic=$micStatus');
-      }
-
-      debugPrint('✅ Permissions GRANTED: camera=$cameraStatus, mic=$micStatus');
-
       // Initialize peer connection
       await _initializePeerConnection();
 
@@ -241,10 +187,6 @@ class WebRTCService with ChangeNotifier {
         'height': {'ideal': 720},
       };
 
-      // Enable speakerphone BEFORE getting media (iOS requirement)
-      await Helper.setSpeakerphoneOn(true);
-      debugPrint('🔊 Speakerphone enabled BEFORE getUserMedia');
-
       // Get local media (camera + mic)
       localStream = await navigator.mediaDevices.getUserMedia({
         'audio': {
@@ -254,9 +196,9 @@ class WebRTCService with ChangeNotifier {
         'video': videoConstraints,
       });
 
-      // Ensure speakerphone is still on after getUserMedia
+      // Enable speakerphone on iOS/Android (not earpiece)
       await Helper.setSpeakerphoneOn(true);
-      debugPrint('🔊 Speakerphone enforced AFTER getUserMedia');
+      debugPrint('🔊 Speakerphone enabled');
 
       // Apply default microphone and camera settings
       final micDefault = _settingsService?.microphoneDefault ?? true;
@@ -317,18 +259,10 @@ class WebRTCService with ChangeNotifier {
 
       isInCall = true;
       currentCallId = callerInfo!['callId'];
-
-      debugPrint('🔔 Calling notifyListeners() - isInCall=$isInCall');
       notifyListeners();
-      debugPrint('🔔 notifyListeners() completed');
-
-      debugPrint('✅ ========== answerCall() COMPLETED SUCCESSFULLY ==========');
-    } catch (e, stackTrace) {
-      debugPrint('❌ ========== ERROR in answerCall() ==========');
-      debugPrint('❌ Error: $e');
-      debugPrint('❌ Stack trace: $stackTrace');
+    } catch (e) {
+      debugPrint('❌ Error answering call: $e');
       endCall();
-      rethrow; // Rethrow to show error in UI
     }
   }
 

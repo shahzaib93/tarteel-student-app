@@ -1,12 +1,9 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/webrtc_service.dart';
 import '../services/app_config_service.dart';
-import '../services/fcm_service.dart';
 import '../widgets/modern_stat_card.dart';
 import '../widgets/modern_teacher_card.dart';
 import 'messages_screen.dart';
@@ -24,8 +21,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
-  bool _isShowingDialog = false;
-  bool _isNavigatingToCall = false;
 
   // Create screens once, not on every build
   late final List<Widget> _screens = [
@@ -38,26 +33,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Schedule initialization for after the first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeWebRTC();
-    });
+    _initializeWebRTC();
   }
 
-  Future<void> _initializeWebRTC() async {
+  void _initializeWebRTC() {
     final authService = Provider.of<AuthService>(context, listen: false);
     final webrtcService = Provider.of<WebRTCService>(context, listen: false);
     final appConfigService = Provider.of<AppConfigService>(context, listen: false);
-    final fcmService = Provider.of<FCMService>(context, listen: false);
 
     if (authService.currentUser != null) {
-      // Initialize FCM for push notifications
-      fcmService.initialize(authService.currentUser!.uid);
-
-      // 🎥 REQUEST CAMERA & MIC PERMISSIONS EARLY (like FCM)
-      // This prevents crashes during call acceptance
-      await _requestMediaPermissionsEarly();
-
       // Get socket URL from Firestore config
       final socketUrl = appConfigService.getSocketUrl();
 
@@ -78,189 +62,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     webrtcService.addListener(_handleWebRTCChanges);
   }
 
-  /// Request camera and microphone permissions early (on app startup)
-  /// Uses flutter_webrtc's getUserMedia which triggers native iOS permission prompts
-  Future<void> _requestMediaPermissionsEarly() async {
-    try {
-      debugPrint('🎥 ========== REQUESTING CAMERA/MIC PERMISSIONS ==========');
-      debugPrint('🎥 Using getUserMedia() to trigger native iOS permission prompts...');
-
-      // Get temporary stream to trigger permission prompts
-      // This is the CORRECT way on iOS - getUserMedia automatically shows permission dialogs
-      final stream = await navigator.mediaDevices.getUserMedia({
-        'audio': true,
-        'video': {
-          'facingMode': 'user',
-        },
-      });
-
-      debugPrint('✅ ========== PERMISSIONS GRANTED! ==========');
-      debugPrint('📸 Camera tracks: ${stream.getVideoTracks().length}');
-      debugPrint('🎤 Audio tracks: ${stream.getAudioTracks().length}');
-
-      // Stop and dispose the temporary stream immediately
-      stream.getTracks().forEach((track) {
-        track.stop();
-        debugPrint('🛑 Stopped track: ${track.kind}');
-      });
-      stream.dispose();
-      debugPrint('🗑️ Disposed temporary stream');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Camera and Microphone access granted!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-
-      debugPrint('✅ Permissions requested successfully and stream cleaned up');
-    } catch (e, stackTrace) {
-      debugPrint('❌ ========== PERMISSIONS DENIED OR ERROR ==========');
-      debugPrint('❌ Error: $e');
-      debugPrint('❌ Stack trace: $stackTrace');
-
-      // User denied permissions - this is OK, they can grant later
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('⚠️ Camera/Microphone access needed for video calls. You\'ll be asked again when a call arrives.'),
-            duration: Duration(seconds: 4),
-          ),
-        );
-      }
-    }
-  }
-
   void _handleWebRTCChanges() {
-    if (!mounted) return;
-
     final webrtcService = Provider.of<WebRTCService>(context, listen: false);
 
-    // Show incoming call dialog when call arrives (ONLY ONCE)
-    if (webrtcService.callerInfo != null && !webrtcService.isInCall && !_isShowingDialog) {
+    // Show incoming call dialog
+    if (webrtcService.callerInfo != null && !webrtcService.isInCall) {
       _showIncomingCallDialog();
+    }
+
+    // Show video call screen
+    if (webrtcService.isInCall) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const VideoCallScreen(),
+          fullscreenDialog: true,
+        ),
+      );
     }
   }
 
   void _showIncomingCallDialog() {
-    _isShowingDialog = true;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => IncomingCallDialog(
-        onAccept: _handleAcceptCall,
-        onReject: _handleRejectCall,
-      ),
-    ).then((_) {
-      if (mounted) {
-        setState(() {
-          _isShowingDialog = false;
-        });
-      }
-    });
-  }
-
-  /// Handle call acceptance - does ALL the work (like React App.jsx)
-  /// Permissions, answering call, navigation - everything happens here
-  Future<void> _handleAcceptCall() async {
-    if (_isNavigatingToCall) return; // Prevent double-tap
-    if (!mounted) return; // Safety check
-
-    debugPrint('📞 Dashboard: Starting call acceptance flow...');
-
-    // Get WebRTCService reference BEFORE any async operations
-    WebRTCService? webrtcService;
-    try {
-      webrtcService = Provider.of<WebRTCService>(context, listen: false);
-    } catch (e) {
-      debugPrint('❌ Dashboard: Failed to get WebRTCService: $e');
-      return;
-    }
-
-    try {
-      // Answer the call (this handles permissions internally)
-      debugPrint('📞 Dashboard: Calling answerCall()...');
-      await webrtcService.answerCall();
-      debugPrint('📞 Dashboard: answerCall() completed, isInCall=${webrtcService.isInCall}');
-      debugPrint('📞 Dashboard: localStream exists: ${webrtcService.localStream != null}');
-      debugPrint('📞 Dashboard: remoteStream exists: ${webrtcService.remoteStream != null}');
-
-      // Safety check after async operation
-      if (!mounted) {
-        debugPrint('⚠️ Dashboard: Widget unmounted after answerCall()');
-        return;
-      }
-
-      // Check if call was actually established
-      if (!webrtcService.isInCall) {
-        debugPrint('❌ Dashboard: Call not established after answerCall()');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to connect call'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        return;
-      }
-
-      // IMPORTANT: Check if localStream is ready
-      if (webrtcService.localStream == null) {
-        debugPrint('❌ Dashboard: Local stream not ready after answerCall()');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to initialize camera/microphone'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        return;
-      }
-
-      // Navigate to call screen
-      debugPrint('📞 Dashboard: All checks passed, navigating to VideoCallScreen...');
-      _navigateToCallScreen();
-      debugPrint('✅ Dashboard: Call acceptance flow completed successfully');
-    } catch (e, stackTrace) {
-      debugPrint('❌ Dashboard: Error in call acceptance: $e');
-      debugPrint('❌ Stack trace: $stackTrace');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to answer call: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    }
-  }
-
-  /// Handle call rejection
-  void _handleRejectCall() {
-    final webrtcService = Provider.of<WebRTCService>(context, listen: false);
-    debugPrint('📞 Dashboard: Rejecting call');
-    webrtcService.rejectCall();
-  }
-
-  void _navigateToCallScreen() {
-    _isNavigatingToCall = true;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const VideoCallScreen(),
-        fullscreenDialog: true,
-      ),
-    ).then((_) {
-      if (mounted) {
-        setState(() {
-          _isNavigatingToCall = false;
-        });
-      }
-    });
+      builder: (context) => const IncomingCallDialog(),
+    );
   }
 
   @override
